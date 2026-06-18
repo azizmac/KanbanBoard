@@ -3,6 +3,8 @@ import { can, requireUser } from "@/lib/auth";
 import { getColumnOptions, getTaskDetail, getTeam } from "@/lib/task-data";
 import { TaskDetailClient } from "./TaskDetailClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function TaskPage({
   params,
 }: {

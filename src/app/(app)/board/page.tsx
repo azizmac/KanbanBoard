@@ -1,6 +1,8 @@
 import { getBoard } from "@/lib/board-data";
 import { BoardView } from "./BoardView";
 
+export const dynamic = "force-dynamic";
+
 export default async function BoardPage() {
   const board = await getBoard();
 

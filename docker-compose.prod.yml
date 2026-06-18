@@ -1,0 +1,51 @@
+# Mini-PC infrastructure: PostgreSQL + MinIO (S3).
+# Secrets are read from a sibling .env file (do NOT commit it).
+#   docker compose -f docker-compose.prod.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kanban-pg
+    restart: always
+    environment:
+      POSTGRES_USER: kanban
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?set PG_PASSWORD in .env}
+      POSTGRES_DB: kanban
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanban"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: kanban-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+    ports:
+      - "9000:9000" # S3 API — forward this port on the router
+      - "9001:9001" # web console — keep LAN-only, do NOT forward
+    volumes:
+      - miniodata:/data
+
+  # one-shot: create the "kanban" bucket once MinIO is up
+  createbucket:
+    image: minio/mc:latest
+    depends_on: [minio]
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 '${S3_ACCESS_KEY}' '${S3_SECRET_KEY}' 2>/dev/null; do echo 'waiting for minio...'; sleep 2; done;
+      mc mb local/kanban 2>/dev/null || echo 'bucket already exists';
+      echo 'MinIO bucket ready: kanban';
+      "
+
+volumes:
+  pgdata:
+  miniodata:

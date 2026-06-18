@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { makeLinkToken } from "@/lib/telegram-link";
 import { TelegramConnect } from "./TelegramConnect";
 
+export const dynamic = "force-dynamic";
+
 const roleBadge: Record<string, string> = {
   ADMIN: "bg-rose-50 text-rose-600",
   MANAGER: "bg-amber-50 text-amber-600",

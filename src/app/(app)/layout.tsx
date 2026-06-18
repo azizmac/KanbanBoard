@@ -1,6 +1,10 @@
 import { AppHeader } from "@/components/AppHeader";
 import { requireUser } from "@/lib/auth";
 
+// Authenticated pages are per-user and read the DB at request time — never
+// statically prerender them at build (would try to reach the DB during build).
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: {
