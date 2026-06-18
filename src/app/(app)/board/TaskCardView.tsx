@@ -91,7 +91,7 @@ export function TaskCardView({ task }: { task: TaskCard }) {
       onClick={() => {
         if (!isTemp) router.push(`/task/${task.id}`);
       }}
-      className={`touch-none ${isDragging ? "dragging" : ""} ${isTemp ? "cursor-default opacity-60" : "cursor-pointer"}`}
+      className={`${isDragging ? "dragging" : ""} ${isTemp ? "cursor-default opacity-60" : "cursor-pointer"}`}
     >
       <TaskCardContent task={task} />
     </div>

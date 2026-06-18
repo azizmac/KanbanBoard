@@ -29,7 +29,7 @@ export function ColumnView({
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-2xl bg-[color-mix(in_srgb,var(--color-line)_22%,transparent)]">
+    <div className="flex w-[80vw] shrink-0 flex-col rounded-2xl bg-[color-mix(in_srgb,var(--color-line)_22%,transparent)] sm:w-72">
       <header className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">{column.name}</h2>
@@ -48,7 +48,7 @@ export function ColumnView({
 
       <div
         ref={setNodeRef}
-        className={`scroll-thin flex max-h-[calc(100vh-12rem)] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 transition ${
+        className={`scroll-thin flex max-h-[calc(100dvh-12rem)] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 transition ${
           isOver ? "bg-[var(--color-accent-soft)]/50" : ""
         }`}
       >
