@@ -1,0 +1,438 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState, useTransition } from "react";
+import { Avatar } from "@/components/Avatar";
+import { MentionTextarea } from "@/components/MentionTextarea";
+import { priorityLabels } from "@/lib/constants";
+import type {
+  AttachmentData,
+  CommentData,
+  ColumnOption,
+  Priority,
+  TaskDetailData,
+  TeamUser,
+} from "@/lib/types";
+import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
+
+const selectClass =
+  "w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-accent)]";
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} Б`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} КБ`;
+  return `${(n / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function RichText({ text, team }: { text: string; team: TeamUser[] }) {
+  const usernames = new Set(
+    team.filter((u) => u.username).map((u) => u.username!.toLowerCase()),
+  );
+  const nodes: React.ReactNode[] = [];
+  const re = /(@\w{2,32})/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const handle = m[1].slice(1).toLowerCase();
+    if (usernames.has(handle)) {
+      nodes.push(
+        <span key={key++} className="font-medium text-[var(--color-accent)]">
+          {m[1]}
+        </span>,
+      );
+    } else {
+      nodes.push(m[1]);
+    }
+    last = m.index + m[1].length;
+  }
+  nodes.push(text.slice(last));
+  return <span className="whitespace-pre-wrap break-words">{nodes}</span>;
+}
+
+export function TaskDetailClient({
+  task,
+  team,
+  columns,
+  currentUser,
+  canDelete,
+}: {
+  task: TaskDetailData;
+  team: TeamUser[];
+  columns: ColumnOption[];
+  currentUser: { id: string; name: string };
+  canDelete: boolean;
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [title, setTitle] = useState(task.title);
+  const [editingTitle, setEditingTitle] = useState(false);
+
+  const [desc, setDesc] = useState(task.description ?? "");
+  const [savedDesc, setSavedDesc] = useState(task.description ?? "");
+
+  const [columnId, setColumnId] = useState(task.columnId);
+  const [assigneeId, setAssigneeId] = useState(task.assignee?.id ?? "");
+  const [priority, setPriority] = useState<Priority>(task.priority);
+  const [due, setDue] = useState(task.dueDate ? task.dueDate.slice(0, 10) : "");
+
+  const [comments, setComments] = useState<CommentData[]>(task.comments);
+  const [commentBody, setCommentBody] = useState("");
+
+  const [attachments, setAttachments] = useState<AttachmentData[]>(task.attachments);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function saveTitle() {
+    setEditingTitle(false);
+    const t = title.trim();
+    if (!t || t === task.title) {
+      setTitle(task.title);
+      return;
+    }
+    startTransition(() => {
+      void updateTask(task.id, { title: t });
+    });
+  }
+
+  function saveDesc() {
+    startTransition(async () => {
+      await updateTask(task.id, { description: desc || null });
+      setSavedDesc(desc);
+    });
+  }
+
+  function saveColumn(v: string) {
+    setColumnId(v);
+    startTransition(() => {
+      void updateTask(task.id, { columnId: v });
+    });
+  }
+  function saveAssignee(v: string) {
+    setAssigneeId(v);
+    startTransition(() => {
+      void updateTask(task.id, { assigneeId: v || null });
+    });
+  }
+  function savePriority(v: Priority) {
+    setPriority(v);
+    startTransition(() => {
+      void updateTask(task.id, { priority: v });
+    });
+  }
+  function saveDue(v: string) {
+    setDue(v);
+    startTransition(() => {
+      void updateTask(task.id, { dueDate: v ? new Date(v).toISOString() : null });
+    });
+  }
+
+  function sendComment() {
+    const body = commentBody.trim();
+    if (!body) return;
+    const optimistic: CommentData = {
+      id: `temp-${Date.now()}`,
+      body,
+      createdAt: new Date().toISOString(),
+      author: currentUser,
+    };
+    setComments((c) => [...c, optimistic]);
+    setCommentBody("");
+    startTransition(async () => {
+      const res = await addComment(task.id, body);
+      if (!res.ok) {
+        setComments((c) => c.filter((x) => x.id !== optimistic.id));
+        setError(res.error ?? "Не удалось отправить комментарий");
+      }
+    });
+  }
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/tasks/${task.id}/attachments`, { method: "POST", body: fd });
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+    if (res.ok) {
+      const data = await res.json();
+      setAttachments((a) => [...a, data.attachment]);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error ?? "Не удалось загрузить файл");
+    }
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((a) => a.filter((x) => x.id !== id));
+    startTransition(() => {
+      void deleteAttachment(id);
+    });
+  }
+
+  function removeTask() {
+    if (!confirm("Удалить задачу безвозвратно?")) return;
+    startTransition(async () => {
+      const res = await deleteTask(task.id);
+      if (res?.ok) router.push("/board");
+      else setError(res?.error ?? "Не удалось удалить");
+    });
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-5">
+      <Link
+        href="/board"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+      >
+        ← К доске
+      </Link>
+
+      {error && (
+        <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</div>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+        {/* Main column */}
+        <div className="min-w-0">
+          {editingTitle ? (
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveTitle();
+                if (e.key === "Escape") {
+                  setTitle(task.title);
+                  setEditingTitle(false);
+                }
+              }}
+              className="w-full rounded-lg border border-[var(--color-accent)] px-2 py-1 text-xl font-semibold outline-none"
+            />
+          ) : (
+            <h1
+              onClick={() => setEditingTitle(true)}
+              className="cursor-text rounded-lg px-2 py-1 text-xl font-semibold tracking-tight hover:bg-[var(--color-canvas)]"
+              title="Нажмите, чтобы изменить"
+            >
+              {title}
+            </h1>
+          )}
+
+          {/* Description */}
+          <div className="mt-4">
+            <h3 className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+              Описание
+            </h3>
+            <MentionTextarea
+              value={desc}
+              onChange={setDesc}
+              users={team}
+              rows={4}
+              placeholder="Добавьте описание… Используйте @, чтобы упомянуть коллегу."
+            />
+            {desc !== savedDesc && (
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={saveDesc}
+                  className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                >
+                  Сохранить
+                </button>
+                <button
+                  onClick={() => setDesc(savedDesc)}
+                  className="text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                >
+                  Отмена
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div className="mt-6">
+            <h3 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+              Вложения ({attachments.length})
+            </h3>
+            <div className="space-y-1.5">
+              {attachments.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2"
+                >
+                  <span className="text-lg">📎</span>
+                  <a
+                    href={`/api/attachments/${a.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate text-sm font-medium hover:text-[var(--color-accent)]"
+                  >
+                    {a.filename}
+                  </a>
+                  <span className="text-xs text-[var(--color-muted)]">{formatBytes(a.size)}</span>
+                  <button
+                    onClick={() => removeAttachment(a.id)}
+                    className="text-xs text-[var(--color-muted)] hover:text-rose-500"
+                    title="Удалить"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <input ref={fileRef} type="file" className="hidden" onChange={onUpload} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="mt-2 rounded-lg border border-dashed border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
+            >
+              {uploading ? "Загрузка…" : "+ Прикрепить файл"}
+            </button>
+          </div>
+
+          {/* Comments */}
+          <div className="mt-6">
+            <h3 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+              Комментарии ({comments.length})
+            </h3>
+            <div className="space-y-3">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2.5">
+                  <Avatar name={c.author.name} size={30} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-medium">{c.author.name}</span>
+                      <span className="text-xs text-[var(--color-muted)]">
+                        {formatDateTime(c.createdAt)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-[var(--color-ink)]">
+                      <RichText text={c.body} team={team} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {comments.length === 0 && (
+                <p className="px-1 text-sm text-[var(--color-muted)]">Пока нет комментариев.</p>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-start gap-2.5">
+              <Avatar name={currentUser.name} size={30} />
+              <div className="min-w-0 flex-1">
+                <MentionTextarea
+                  value={commentBody}
+                  onChange={setCommentBody}
+                  users={team}
+                  rows={2}
+                  placeholder="Написать комментарий… (@ — упомянуть, Ctrl+Enter — отправить)"
+                  onSubmit={sendComment}
+                />
+                <button
+                  onClick={sendComment}
+                  disabled={!commentBody.trim()}
+                  className="mt-2 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  Отправить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <aside className="space-y-4">
+          <div>
+            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
+              Статус
+            </label>
+            <select className={selectClass} value={columnId} onChange={(e) => saveColumn(e.target.value)}>
+              {columns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
+              Исполнитель
+            </label>
+            <select className={selectClass} value={assigneeId} onChange={(e) => saveAssignee(e.target.value)}>
+              <option value="">— не назначен —</option>
+              {team.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
+              Приоритет
+            </label>
+            <select
+              className={selectClass}
+              value={priority}
+              onChange={(e) => savePriority(e.target.value as Priority)}
+            >
+              {(["LOW", "NORMAL", "HIGH", "URGENT"] as Priority[]).map((p) => (
+                <option key={p} value={p}>
+                  {priorityLabels[p]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
+              Дедлайн
+            </label>
+            <input
+              type="date"
+              className={selectClass}
+              value={due}
+              onChange={(e) => saveDue(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-muted)]">
+            <div className="flex items-center gap-1.5">
+              <Avatar name={task.creator.name} size={18} />
+              Автор: {task.creator.name}
+            </div>
+            <div>Создано: {formatDateTime(task.createdAt)}</div>
+          </div>
+
+          {canDelete && (
+            <button
+              onClick={removeTask}
+              className="w-full rounded-lg border border-rose-200 px-3 py-1.5 text-sm text-rose-600 transition hover:bg-rose-50"
+            >
+              Удалить задачу
+            </button>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}

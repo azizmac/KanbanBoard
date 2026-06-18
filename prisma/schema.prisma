@@ -1,0 +1,179 @@
+// Kanban Tracker — data model
+// Prisma 7: generator `prisma-client`, datasource url comes from prisma.config.ts
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----- Users & access -----
+
+enum Role {
+  ADMIN // full control, manages users
+  MANAGER // manages tasks & sees team
+  MEMBER // regular team member
+}
+
+model User {
+  id         String  @id @default(cuid())
+  // Telegram identity (primary login method)
+  telegramId String? @unique
+  username   String? @unique // @handle used for mentions & login
+  name       String
+  avatarUrl  String?
+  role       Role    @default(MEMBER)
+  position   String? // job title / должность (e.g. "Backend Lead")
+
+  // optional reporting hierarchy ("кто кому подчиняется")
+  managerId String?
+  manager   User?   @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports   User[]  @relation("Reports")
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // relations
+  createdTasks  Task[]         @relation("TaskCreator")
+  assignedTasks Task[]         @relation("TaskAssignee")
+  comments      Comment[]
+  attachments   Attachment[]
+  mentions      Mention[]
+  sessions      Session[]
+  notifications Notification[]
+
+  @@index([managerId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ----- Board structure -----
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  columns   Column[]
+}
+
+model Column {
+  id       String @id @default(cuid())
+  name     String
+  position Int // order of the column on the board
+  boardId  String
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+
+  @@index([boardId])
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  position    Int // order within its column
+  priority    Priority  @default(NORMAL)
+  dueDate     DateTime?
+
+  columnId String
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  creatorId String
+  creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments    Comment[]
+  attachments Attachment[]
+  mentions    Mention[]
+
+  @@index([columnId])
+  @@index([assigneeId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  body      String
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  createdAt DateTime  @default(now())
+  mentions  Mention[]
+
+  @@index([taskId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  filename   String // original file name
+  storedName String // name on disk / storage key
+  mimeType   String
+  size       Int
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploaderId String
+  uploader   User     @relation(fields: [uploaderId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// A user mentioned inside a task description or a comment
+model Mention {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum NotificationType {
+  ASSIGNED
+  MENTIONED
+  COMMENTED
+  DUE_SOON
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  message   String
+  taskId    String?
+  read      Boolean          @default(false)
+  // whether it was pushed to Telegram
+  delivered Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+}

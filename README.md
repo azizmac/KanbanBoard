@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kanban Tracker
 
-## Getting Started
+Простой таск-трекер с канбан-доской и интеграцией с Telegram для небольшой команды.
 
-First, run the development server:
+**Стек:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · PostgreSQL · Prisma 7 · dnd-kit · grammY (Telegram).
+
+## Возможности
+
+- 🔐 Авторизация (демо-вход по выбору пользователя; Telegram-вход включается после настройки бота)
+- 👥 Пользователи: роли (Администратор / Менеджер / Участник), должности, иерархия подчинения
+- 📋 Канбан-доска: колонки, карточки, drag & drop между колонками и внутри них
+- ✅ Задачи: создание, исполнитель, приоритет, дедлайн, статус
+- 💬 Комментарии, @упоминания (с автокомплитом), вложения файлов
+- 📨 Telegram: уведомления о назначениях/упоминаниях/комментариях + вход через Telegram
+
+## Быстрый старт
+
+Требуется Node 20+ и Docker.
 
 ```bash
+# 1. Поднять PostgreSQL
+npm run db:up
+
+# 2. Применить схему БД
+npm run db:migrate
+
+# 3. Заполнить демо-данными (10 пользователей, доска, задачи)
+npm run db:seed
+
+# 4. Запустить приложение
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Открыть <http://localhost:3000>. На экране входа выбрать любого пользователя (демо-режим).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Полезные команды
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Команда | Что делает |
+|---|---|
+| `npm run dev` | Dev-сервер |
+| `npm run db:up` / `db:down` | Запустить / остановить Postgres (Docker) |
+| `npm run db:migrate` | Применить миграции |
+| `npm run db:seed` | Перезалить демо-данные |
+| `npm run db:studio` | Prisma Studio (просмотр БД) |
+| `npm run db:reset` | Сбросить БД и миграции |
+| `npm run bot` | Telegram-бот (long polling) для привязки и приёма команд |
 
-## Learn More
+## Telegram
 
-To learn more about Next.js, take a look at the following resources:
+1. Создайте бота у [@BotFather](https://t.me/BotFather), вставьте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` в `.env`.
+2. Запустите бота: `npm run bot` (одновременно должен работать только один экземпляр).
+3. В приложении откройте **Команда → Подключить Telegram**, нажмите в боте **Start** — аккаунт привяжется, и уведомления начнут приходить в чат.
+4. Вход через Telegram (виджет на странице логина) работает на публичном HTTPS-домене: задайте домен боту командой `/setdomain` у @BotFather. На `localhost` используется демо-вход.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Переменные окружения
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+См. `.env.example`. Ключевые:
 
-## Deploy on Vercel
+- `DATABASE_URL` — строка подключения к Postgres
+- `SESSION_SECRET` — секрет для подписи сессий
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` — токен бота от [@BotFather](https://t.me/BotFather).
+  Пока пусто — работает демо-вход; как только заполнено — включается вход через Telegram и уведомления.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Архитектура
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Серверные компоненты читают данные через Prisma напрямую; мутации — через Server Actions.
+- Сессии хранятся в БД (`Session`), токен — в httpOnly cookie.
+- Drag & drop — `dnd-kit` с оптимистичными обновлениями, перемещения персистятся через Server Action.
