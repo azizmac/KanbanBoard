@@ -1,4 +1,58 @@
-# Деплой: фронт на Vercel, БД + S3 на мини-ПК
+# Деплой на Koyeb (рекомендуется для РФ)
+
+> ⚠️ **Vercel не подошёл:** его edge-IP (диапазон `216.198.79.x` / `64.29.17.x`) недоступны
+> из РФ-сети. Koyeb, Fly.io и Cloudflare — доступны. Ниже — деплой на **Koyeb**
+> (запускает наш Docker-образ как есть; бот через webhook → Telegram без прокси).
+> БД и S3 остаются на мини-ПК.
+
+```
+[Пользователи РФ] ──HTTPS──> [Koyeb: Next + bot webhook]  (доступен из РФ)
+                                  │
+                  ┌───────────────┴───────────────┐
+        postgres://db.freshdv.ru:6432     http://s3.freshdv.ru:9000 (MinIO)
+                  └──────────── мини-ПК (белый IP) ───────────┘
+[Telegram] ──webhook──> [Koyeb]   (Koyeb вне РФ → api.telegram.org доступен напрямую)
+```
+
+## Шаги
+
+1. В репозитории уже есть `Dockerfile` (Next standalone) и `.dockerignore`.
+2. Koyeb → **Create Web Service** → **GitHub** → `azizmac/KanbanPims`, ветка `main`.
+   - Builder: **Dockerfile**
+   - Port: **3000**
+   - Instance: **Free**
+   - Region: ближе к РФ (Frankfurt), чтобы быстрее ходить до мини-ПК.
+3. **Environment variables** (Koyeb → Settings → Environment):
+
+| Переменная | Значение |
+|---|---|
+| `DATABASE_URL` | `postgresql://kanban:ПАРОЛЬ@db.freshdv.ru:6432/kanban?schema=public` |
+| `SESSION_SECRET` | длинная строка |
+| `NEXT_PUBLIC_APP_URL` | URL приложения на Koyeb (или `https://freshdv.ru`, если привяжете домен) |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` | от @BotFather |
+| `TELEGRAM_WEBHOOK_SECRET` | длинная строка |
+| `ADMIN_SECRET` / `ADMIN_TELEGRAM_USERNAME` | секрет + ваш `@username` |
+| `S3_ENDPOINT` | `http://s3.freshdv.ru:9000` |
+| `S3_REGION` / `S3_BUCKET` | `us-east-1` / `kanban` |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | ключи MinIO |
+
+> `TELEGRAM_API_ROOT` оставить **пустым** — Koyeb вне РФ, Telegram доступен напрямую.
+> `NEXT_PUBLIC_APP_URL` вшивается в сборку: задайте до билда; узнали URL после создания —
+> впишите и сделайте Redeploy.
+
+4. Deploy → получите `https://<app>-<org>.koyeb.app`.
+5. **Webhook бота** (локально, с боевым токеном в `.env`): `npm run webhook:set https://<app>.koyeb.app`
+6. **@BotFather** → `/setdomain` → домен приложения (для входа-виджета).
+7. _(опц.)_ Привязать `freshdv.ru` к Koyeb (custom domain, CNAME на Koyeb) — koyeb.app доступен из РФ.
+
+Миграции в боевую БД (один раз, с вашей машины):
+```bash
+DATABASE_URL="postgresql://kanban:ПАРОЛЬ@db.freshdv.ru:6432/kanban?schema=public" npx prisma migrate deploy
+```
+
+---
+
+# (Архив) Деплой: фронт на Vercel, БД + S3 на мини-ПК
 
 Архитектура: **Next.js на Vercel** (вне РФ → Telegram работает без прокси, бот через webhook),
 **PostgreSQL и MinIO (S3)** — на вашем мини-ПК с белым IP.

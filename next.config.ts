@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image (Koyeb / any container host).
+  output: "standalone",
   turbopack: {
     root: projectRoot,
   },
