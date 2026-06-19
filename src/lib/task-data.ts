@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { ColumnOption, TaskDetailData, TeamUser } from "./types";
+import type { ColumnOption, TagData, TaskDetailData, TeamUser } from "./types";
 
 export async function getTaskDetail(taskId: string): Promise<TaskDetailData | null> {
   const task = await prisma.task.findUnique({
@@ -64,6 +64,15 @@ export async function getTeam(): Promise<TeamUser[]> {
     select: { id: true, name: true, username: true, position: true, role: true },
   });
   return users;
+}
+
+/** All tags defined on a board, for tag suggestions in the task screen. */
+export async function getBoardTags(boardId: string): Promise<TagData[]> {
+  return prisma.tag.findMany({
+    where: { boardId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, color: true },
+  });
 }
 
 export async function getColumnOptions(boardId?: string): Promise<ColumnOption[]> {

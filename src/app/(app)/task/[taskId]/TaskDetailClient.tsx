@@ -11,10 +11,13 @@ import type {
   ColumnOption,
   CommentData,
   Priority,
+  TagData,
   TaskDetailData,
   TeamUser,
 } from "@/lib/types";
 import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
+import { Checklist } from "./Checklist";
+import { TaskTags } from "./TaskTags";
 
 const fieldClass =
   "w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-accent)] focus:ring-[3px] focus:ring-[var(--color-accent)]/10";
@@ -72,6 +75,7 @@ export function TaskDetailClient({
   task,
   team,
   columns,
+  boardTags,
   currentUser,
   canDelete,
   now,
@@ -79,6 +83,7 @@ export function TaskDetailClient({
   task: TaskDetailData;
   team: TeamUser[];
   columns: ColumnOption[];
+  boardTags: TagData[];
   currentUser: { id: string; name: string };
   canDelete: boolean;
   now: number;
@@ -202,7 +207,7 @@ export function TaskDetailClient({
     if (!confirm("Удалить задачу безвозвратно?")) return;
     startTransition(async () => {
       const res = await deleteTask(task.id);
-      if (res?.ok) router.push("/board");
+      if (res?.ok) router.push(`/board/${task.board.id}`);
       else setError(res?.error ?? "Не удалось удалить");
     });
   }
@@ -212,10 +217,10 @@ export function TaskDetailClient({
       {/* Breadcrumb bar */}
       <div className="flex h-[54px] shrink-0 items-center gap-2 border-b border-[var(--color-line)] px-5 text-sm">
         <Link
-          href="/board"
+          href={`/board/${task.board.id}`}
           className="inline-flex items-center gap-1 text-[var(--color-muted)] transition hover:text-[var(--color-ink)]"
         >
-          ← Доска
+          ← {task.board.name}
         </Link>
         <span className="text-[var(--color-faint)]">/</span>
         <span className="text-[var(--color-muted)]">{columnName}</span>
@@ -234,14 +239,15 @@ export function TaskDetailClient({
       <div className="flex flex-1 flex-col md:flex-row">
         {/* Main column */}
         <div className="min-w-0 flex-1 px-5 py-6 md:px-9 md:py-7">
-          {/* priority chip */}
-          <div className="mb-3">
+          {/* priority chip + tags */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 text-[11px] font-semibold ${priorityChip[priority]}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${priorityDot[priority]}`} />
               {priorityLabels[priority]}
             </span>
+            <TaskTags taskId={task.id} initialTags={task.tags} boardTags={boardTags} />
           </div>
 
           {editingTitle ? (
@@ -295,6 +301,11 @@ export function TaskDetailClient({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Checklist */}
+          <div className="mt-7">
+            <Checklist taskId={task.id} initialItems={task.checklist} />
           </div>
 
           {/* Attachments */}

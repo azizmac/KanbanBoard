@@ -72,7 +72,7 @@ export async function updateTask(
   }
 
   revalidatePath(`/task/${taskId}`);
-  revalidatePath("/board");
+  revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
 }
 
@@ -110,7 +110,7 @@ export async function addComment(taskId: string, body: string) {
   });
 
   revalidatePath(`/task/${taskId}`);
-  revalidatePath("/board");
+  revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
 }
 
@@ -122,7 +122,7 @@ export async function deleteTask(taskId: string) {
     return { ok: false as const, error: "Недостаточно прав" };
   }
   await prisma.task.delete({ where: { id: taskId } });
-  revalidatePath("/board");
+  revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
 }
 
@@ -136,5 +136,84 @@ export async function deleteAttachment(attachmentId: string) {
   await prisma.attachment.delete({ where: { id: attachmentId } });
   await deleteStoredFile(att.storedName);
   revalidatePath(`/task/${att.taskId}`);
+  return { ok: true as const };
+}
+
+// ----- Tags -----
+
+const tagSchema = z.object({
+  name: z.string().trim().min(1, "Введите тег").max(24),
+  color: z.string().trim().max(20).optional(),
+});
+
+/** Attach a tag to a task, creating it on the board if it doesn't exist yet. */
+export async function addTaskTag(taskId: string, input: z.input<typeof tagSchema>) {
+  await requireUser();
+  const parsed = tagSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
+
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { column: { select: { boardId: true } } },
+  });
+  if (!task) return { ok: false as const, error: "Задача не найдена" };
+
+  const boardId = task.column.boardId;
+  const name = parsed.data.name;
+  let tag = await prisma.tag.findFirst({
+    where: { boardId, name: { equals: name, mode: "insensitive" } },
+  });
+  if (!tag) {
+    tag = await prisma.tag.create({ data: { name, color: parsed.data.color ?? "gray", boardId } });
+  }
+  await prisma.task.update({ where: { id: taskId }, data: { tags: { connect: { id: tag.id } } } });
+
+  revalidatePath(`/task/${taskId}`);
+  revalidatePath("/board/[boardId]", "page");
+  return { ok: true as const, tag: { id: tag.id, name: tag.name, color: tag.color } };
+}
+
+export async function removeTaskTag(taskId: string, tagId: string) {
+  await requireUser();
+  await prisma.task.update({ where: { id: taskId }, data: { tags: { disconnect: { id: tagId } } } });
+  revalidatePath(`/task/${taskId}`);
+  revalidatePath("/board/[boardId]", "page");
+  return { ok: true as const };
+}
+
+// ----- Checklist -----
+
+const checklistTextSchema = z.string().trim().min(1, "Пустой пункт").max(200);
+
+export async function addChecklistItem(taskId: string, text: string) {
+  await requireUser();
+  const parsed = checklistTextSchema.safeParse(text);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
+
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) return { ok: false as const, error: "Задача не найдена" };
+
+  const count = await prisma.checklistItem.count({ where: { taskId } });
+  const item = await prisma.checklistItem.create({
+    data: { taskId, text: parsed.data, position: count },
+  });
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true as const, item: { id: item.id, text: item.text, done: item.done } };
+}
+
+export async function toggleChecklistItem(itemId: string, done: boolean) {
+  await requireUser();
+  const item = await prisma.checklistItem.update({ where: { id: itemId }, data: { done } });
+  revalidatePath(`/task/${item.taskId}`);
+  revalidatePath("/board/[boardId]", "page");
+  return { ok: true as const };
+}
+
+export async function deleteChecklistItem(itemId: string) {
+  await requireUser();
+  const item = await prisma.checklistItem.findUnique({ where: { id: itemId } });
+  if (!item) return { ok: false as const };
+  await prisma.checklistItem.delete({ where: { id: itemId } });
+  revalidatePath(`/task/${item.taskId}`);
   return { ok: true as const };
 }
