@@ -43,10 +43,11 @@ export function Sidebar({ name, isAdmin }: { name: string; isAdmin: boolean }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-[68px] shrink-0 flex-col items-center gap-1 bg-[var(--color-sidebar)] py-4 md:flex">
       <Link
-        href="/board"
-        className="mb-3 grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-[var(--color-accent)] text-sm font-bold text-white"
+        href="/boards"
+        title="Поток"
+        className="mb-3 grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-[var(--color-accent)]"
       >
-        K
+        <span className="h-3.5 w-3.5 rounded-[4px] border-[2.5px] border-white" />
       </Link>
 
       {items.map((it) => {

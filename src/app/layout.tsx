@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kanban Tracker",
-  description: "Простой таск-трекер с канбан-доской и Telegram",
+  title: "Поток",
+  description: "Канбан-доски, задачи и команда — в одном потоке. С интеграцией Telegram.",
 };
 
 export default function RootLayout({
