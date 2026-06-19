@@ -1,0 +1,82 @@
+# Mini-PC deploy that REUSES the already-running kanban-pg + kanban-minio
+# containers (reached via host.docker.internal). Brings up only:
+#   migrate (one-shot) + app + bot + caddy.
+#
+#   cd deploy
+#   cp .env.prod.example .env.prod   # fill it in (DB/S3 point at host.docker.internal)
+#   docker compose -f docker-compose.minipc.yml --env-file .env.prod up -d --build
+#
+# Build context is the repo root (..). app = Next standalone (runner stage);
+# migrate + bot reuse the build stage (full source + prisma + tsx).
+
+services:
+  # one-shot: apply DB migrations to the existing Postgres before the app starts
+  migrate:
+    build:
+      context: ..
+      target: build
+    command: npx prisma migrate deploy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  app:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_SECRET: ${ADMIN_SECRET}
+      ADMIN_TELEGRAM_USERNAME: ${ADMIN_TELEGRAM_USERNAME}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
+      TELEGRAM_API_ROOT: ${TELEGRAM_API_ROOT}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Telegram bot — long polling through the relay (outbound only, no webhook).
+  bot:
+    build:
+      context: ..
+      target: build
+    command: npx tsx scripts/bot.ts
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      TELEGRAM_API_ROOT: ${TELEGRAM_API_ROOT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

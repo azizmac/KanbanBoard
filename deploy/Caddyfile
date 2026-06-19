@@ -4,7 +4,7 @@
 #   - router forwards ports 80 and 443 to the mini-PC
 # Caddy then fetches a free Let's Encrypt certificate automatically.
 
-kanban.freshdv.ru {
+{$APP_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy app:3000
 }
