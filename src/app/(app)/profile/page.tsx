@@ -40,12 +40,12 @@ export default async function ProfilePage() {
       <div className="h-[120px] bg-[linear-gradient(120deg,#5546E0,#7B5CE6_60%,#A78BFA)] sm:h-[120px]" />
 
       <div className="mx-auto max-w-4xl px-5">
-        {/* Header */}
-        <div className="-mt-11 flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
-          <div className="rounded-[26px] bg-[var(--color-surface)] p-1 shadow-[0_1px_3px_rgba(20,20,20,0.08)]">
-            <Avatar name={me.name} size={88} className="!rounded-[22px]" />
+        {/* Header — avatar overlaps the cover; name stays below it */}
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
+          <div className="-mt-14 rounded-[26px] bg-[var(--color-surface)] p-1 shadow-[0_1px_3px_rgba(20,20,20,0.08)]">
+            <Avatar name={me.name} size={96} className="!rounded-[22px]" />
           </div>
-          <div className="flex-1 text-center sm:pb-2 sm:text-left">
+          <div className="flex-1 pt-1 text-center sm:pt-0 sm:text-left">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <h1 className="text-[25px] font-bold tracking-[-0.03em]">{me.name}</h1>
               <span className="rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
