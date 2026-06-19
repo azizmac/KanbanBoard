@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { createSession } from "@/lib/auth";
+import { verifyInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
 import { verifyTelegramAuth } from "@/lib/telegram-auth";
 
@@ -47,6 +49,34 @@ export async function GET(req: NextRequest) {
       data: { telegramId, username: tgUsername, name, role: "ADMIN" },
     });
     await createSession(owner.id);
+    redirect("/board");
+  }
+
+  // 4) Self-provision: a valid invite link, or globally-open signup.
+  const store = await cookies();
+  const inviteTok = store.get("kanban_invite")?.value;
+  const invite = inviteTok ? verifyInviteToken(inviteTok) : null;
+  const openSignup = process.env.OPEN_SIGNUP === "true";
+  if (invite || openSignup) {
+    // keep @username only if it's not already taken
+    let username: string | null = null;
+    if (tgUsername) {
+      const taken = await prisma.user.findFirst({
+        where: { username: { equals: tgUsername, mode: "insensitive" } },
+      });
+      username = taken ? null : tgUsername;
+    }
+    const user = await prisma.user.create({
+      data: {
+        telegramId,
+        username,
+        name,
+        role: invite?.role ?? "MEMBER",
+        avatarUrl: params.photo_url || null,
+      },
+    });
+    if (inviteTok) store.delete("kanban_invite");
+    await createSession(user.id);
     redirect("/board");
   }
 

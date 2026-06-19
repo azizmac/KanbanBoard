@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
 import { roleLabels } from "@/lib/constants";
-import { addUser, updateUser } from "./actions";
+import { addUser, createInviteLink, updateUser } from "./actions";
 
 type Role = "ADMIN" | "MANAGER" | "MEMBER";
 
@@ -59,6 +59,8 @@ export function AdminPanel({
   const [filter, setFilter] = useState<"ALL" | Role>("ALL");
 
   const [adding, setAdding] = useState(false);
+  const [invite, setInvite] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -87,6 +89,24 @@ export function AdminPanel({
         if (res.user) setRows((rs) => [...rs, res.user as AdminUser]);
         setForm({ name: "", username: "", position: "", role: "MEMBER", managerId: "" });
         setAdding(false);
+      } else {
+        setError(res.error ?? "Ошибка");
+      }
+    });
+  }
+
+  function genInvite() {
+    setInviteCopied(false);
+    startTransition(async () => {
+      const res = await createInviteLink("MEMBER");
+      if (res.ok) {
+        setInvite(res.url);
+        try {
+          await navigator.clipboard?.writeText(res.url);
+          setInviteCopied(true);
+        } catch {
+          /* clipboard may be blocked — link is shown for manual copy */
+        }
       } else {
         setError(res.error ?? "Ошибка");
       }
@@ -125,18 +145,45 @@ export function AdminPanel({
             <span className="ml-1">все видят все доски</span>
           </p>
         </div>
-        <button
-          onClick={() => setAdding((v) => !v)}
-          className="flex h-10 items-center gap-2 rounded-[11px] bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M19 8v6M22 11h-6" />
-          </svg>
-          {adding ? "Закрыть" : "Добавить"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={genInvite}
+            className="flex h-10 items-center gap-2 rounded-[11px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            Ссылка-приглашение
+          </button>
+          <button
+            onClick={() => setAdding((v) => !v)}
+            className="flex h-10 items-center gap-2 rounded-[11px] bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M19 8v6M22 11h-6" />
+            </svg>
+            {adding ? "Закрыть" : "Добавить"}
+          </button>
+        </div>
       </div>
+
+      {invite && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3.5 py-3">
+          <span className="text-sm font-medium text-[var(--color-ink)]">
+            Ссылка-приглашение {inviteCopied && <span className="text-[var(--color-success)]">· скопирована</span>}
+          </span>
+          <input
+            readOnly
+            value={invite}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 py-1.5 font-mono text-[12.5px] text-[var(--color-muted)] outline-none"
+          />
+          <span className="text-xs text-[var(--color-faint)]">даёт роль «Участник», действует 7 дней</span>
+        </div>
+      )}
 
       {/* Search + filters */}
       <div className="mt-5 flex flex-wrap items-center gap-2.5">

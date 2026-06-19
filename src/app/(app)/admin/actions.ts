@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
+import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
 
 function safeEqual(a: string, b: string) {
@@ -30,6 +31,17 @@ export async function unlockAdmin(secret: string) {
 async function currentAdmin() {
   const user = await requireUser();
   return user.role === "ADMIN" ? user : null;
+}
+
+/** Generate a shareable invite link. Opening it lets the next Telegram login
+ *  self-provision with the given role (default MEMBER = basic access). */
+export async function createInviteLink(role: "MEMBER" | "MANAGER" = "MEMBER") {
+  const admin = await currentAdmin();
+  if (!admin) return { ok: false as const, error: "Недостаточно прав" };
+
+  const token = makeInviteToken(role, 7);
+  const base = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  return { ok: true as const, url: `${base}/join/${token}`, role, days: 7 };
 }
 
 const roleEnum = z.enum(["ADMIN", "MANAGER", "MEMBER"]);

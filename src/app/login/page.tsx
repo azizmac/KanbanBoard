@@ -9,7 +9,8 @@ import TelegramLoginButton from "./TelegramLoginButton";
 
 const ERRORS: Record<string, string> = {
   telegram: "Не удалось проверить вход через Telegram.",
-  notlinked: "Ваш Telegram не привязан к команде — обратитесь к администратору.",
+  notlinked: "Вас ещё нет в команде — попросите у администратора ссылку-приглашение.",
+  badinvite: "Ссылка-приглашение недействительна или истекла — попросите новую.",
   disabled: "Аккаунт отключён.",
 };
 
