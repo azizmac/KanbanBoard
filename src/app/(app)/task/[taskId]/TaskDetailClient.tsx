@@ -5,19 +5,23 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
 import { MentionTextarea } from "@/components/MentionTextarea";
-import { priorityLabels } from "@/lib/constants";
+import { priorityChip, priorityDot, priorityLabels } from "@/lib/constants";
 import type {
   AttachmentData,
-  CommentData,
   ColumnOption,
+  CommentData,
   Priority,
   TaskDetailData,
   TeamUser,
 } from "@/lib/types";
 import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
 
-const selectClass =
-  "w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-accent)]";
+const fieldClass =
+  "w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-accent)] focus:ring-[3px] focus:ring-[var(--color-accent)]/10";
+const labelClass =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]";
+const sectionLabel =
+  "mb-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]";
 
 function formatBytes(n: number) {
   if (n < 1024) return `${n} Б`;
@@ -34,10 +38,13 @@ function formatDateTime(iso: string) {
   });
 }
 
+function fileExt(name: string) {
+  const e = name.split(".").pop();
+  return e && e.length <= 4 ? e.toUpperCase() : "FILE";
+}
+
 function RichText({ text, team }: { text: string; team: TeamUser[] }) {
-  const usernames = new Set(
-    team.filter((u) => u.username).map((u) => u.username!.toLowerCase()),
-  );
+  const usernames = new Set(team.filter((u) => u.username).map((u) => u.username!.toLowerCase()));
   const nodes: React.ReactNode[] = [];
   const re = /(@\w{2,32})/g;
   let last = 0;
@@ -95,6 +102,9 @@ export function TaskDetailClient({
   const [attachments, setAttachments] = useState<AttachmentData[]>(task.attachments);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const columnName = columns.find((c) => c.id === columnId)?.name ?? task.column.name;
+  const dueOverdue = due ? new Date(due).getTime() < Date.now() - 86_400_000 : false;
 
   function saveTitle() {
     setEditingTitle(false);
@@ -196,21 +206,42 @@ export function TaskDetailClient({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5">
-      <Link
-        href="/board"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)]"
-      >
-        ← К доске
-      </Link>
+    <div className="flex min-h-full flex-col">
+      {/* Breadcrumb bar */}
+      <div className="flex h-[54px] shrink-0 items-center gap-2 border-b border-[var(--color-line)] px-5 text-sm">
+        <Link
+          href="/board"
+          className="inline-flex items-center gap-1 text-[var(--color-muted)] transition hover:text-[var(--color-ink)]"
+        >
+          ← Доска
+        </Link>
+        <span className="text-[var(--color-faint)]">/</span>
+        <span className="text-[var(--color-muted)]">{columnName}</span>
+        <span className="text-[var(--color-faint)]">/</span>
+        <span className="font-mono text-xs text-[var(--color-faint)]">
+          #{task.id.slice(-6).toUpperCase()}
+        </span>
+      </div>
 
       {error && (
-        <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</div>
+        <div className="mx-5 mt-3 rounded-lg border border-[#FECDCA] bg-[#FEF3F2] px-3 py-2 text-sm text-[var(--color-urgent)]">
+          {error}
+        </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+      <div className="flex flex-1 flex-col md:flex-row">
         {/* Main column */}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 px-5 py-6 md:px-9 md:py-7">
+          {/* priority chip */}
+          <div className="mb-3">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 text-[11px] font-semibold ${priorityChip[priority]}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${priorityDot[priority]}`} />
+              {priorityLabels[priority]}
+            </span>
+          </div>
+
           {editingTitle ? (
             <input
               autoFocus
@@ -224,12 +255,12 @@ export function TaskDetailClient({
                   setEditingTitle(false);
                 }
               }}
-              className="w-full rounded-lg border border-[var(--color-accent)] px-2 py-1 text-xl font-semibold outline-none"
+              className="-ml-1 w-full rounded-lg border border-[var(--color-accent)] px-2 py-1 text-2xl font-bold tracking-[-0.03em] outline-none md:text-[27px]"
             />
           ) : (
             <h1
               onClick={() => setEditingTitle(true)}
-              className="cursor-text rounded-lg px-2 py-1 text-xl font-semibold tracking-tight hover:bg-[var(--color-canvas)]"
+              className="-ml-1 cursor-text rounded-lg px-1 text-2xl font-bold leading-tight tracking-[-0.03em] transition hover:bg-[var(--color-surface)] md:text-[27px]"
               title="Нажмите, чтобы изменить"
             >
               {title}
@@ -237,10 +268,8 @@ export function TaskDetailClient({
           )}
 
           {/* Description */}
-          <div className="mt-4">
-            <h3 className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-              Описание
-            </h3>
+          <div className="mt-6">
+            <h3 className={sectionLabel}>Описание</h3>
             <MentionTextarea
               value={desc}
               onChange={setDesc}
@@ -252,7 +281,7 @@ export function TaskDetailClient({
               <div className="mt-2 flex items-center gap-2">
                 <button
                   onClick={saveDesc}
-                  className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                  className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90"
                 >
                   Сохранить
                 </button>
@@ -267,29 +296,33 @@ export function TaskDetailClient({
           </div>
 
           {/* Attachments */}
-          <div className="mt-6">
-            <h3 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-              Вложения ({attachments.length})
-            </h3>
-            <div className="space-y-1.5">
+          <div className="mt-7">
+            <h3 className={sectionLabel}>Вложения ({attachments.length})</h3>
+            <div className="flex flex-wrap gap-2">
               {attachments.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2"
+                  className="flex min-w-[200px] flex-1 items-center gap-2.5 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3 py-2 sm:max-w-[280px]"
                 >
-                  <span className="text-lg">📎</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-accent-tint)] font-mono text-[10px] font-semibold text-[var(--color-accent)]">
+                    {fileExt(a.filename)}
+                  </span>
                   <a
                     href={`/api/attachments/${a.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="min-w-0 flex-1 truncate text-sm font-medium hover:text-[var(--color-accent)]"
+                    className="min-w-0 flex-1"
                   >
-                    {a.filename}
+                    <span className="block truncate text-sm font-medium hover:text-[var(--color-accent)]">
+                      {a.filename}
+                    </span>
+                    <span className="font-mono text-xs text-[var(--color-faint)]">
+                      {formatBytes(a.size)}
+                    </span>
                   </a>
-                  <span className="text-xs text-[var(--color-muted)]">{formatBytes(a.size)}</span>
                   <button
                     onClick={() => removeAttachment(a.id)}
-                    className="text-xs text-[var(--color-muted)] hover:text-rose-500"
+                    className="text-[var(--color-faint)] transition hover:text-[var(--color-urgent)]"
                     title="Удалить"
                   >
                     ✕
@@ -301,40 +334,38 @@ export function TaskDetailClient({
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="mt-2 rounded-lg border border-dashed border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
+              className="mt-2 rounded-[10px] border border-dashed border-[var(--color-border-input)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
             >
               {uploading ? "Загрузка…" : "+ Прикрепить файл"}
             </button>
           </div>
 
           {/* Comments */}
-          <div className="mt-6">
-            <h3 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-              Комментарии ({comments.length})
-            </h3>
-            <div className="space-y-3">
+          <div className="mt-7">
+            <h3 className={sectionLabel}>Комментарии ({comments.length})</h3>
+            <div className="space-y-4">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2.5">
                   <Avatar name={c.author.name} size={30} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium">{c.author.name}</span>
-                      <span className="text-xs text-[var(--color-muted)]">
+                      <span className="text-sm font-semibold">{c.author.name}</span>
+                      <span className="font-mono text-xs text-[var(--color-faint)]">
                         {formatDateTime(c.createdAt)}
                       </span>
                     </div>
-                    <div className="text-sm text-[var(--color-ink)]">
+                    <div className="mt-0.5 text-sm leading-relaxed text-[var(--color-body)]">
                       <RichText text={c.body} team={team} />
                     </div>
                   </div>
                 </div>
               ))}
               {comments.length === 0 && (
-                <p className="px-1 text-sm text-[var(--color-muted)]">Пока нет комментариев.</p>
+                <p className="text-sm text-[var(--color-muted)]">Пока нет комментариев.</p>
               )}
             </div>
 
-            <div className="mt-3 flex items-start gap-2.5">
+            <div className="mt-4 flex items-start gap-2.5">
               <Avatar name={currentUser.name} size={30} />
               <div className="min-w-0 flex-1">
                 <MentionTextarea
@@ -348,7 +379,7 @@ export function TaskDetailClient({
                 <button
                   onClick={sendComment}
                   disabled={!commentBody.trim()}
-                  className="mt-2 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-40"
+                  className="mt-2 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
                 >
                   Отправить
                 </button>
@@ -357,13 +388,11 @@ export function TaskDetailClient({
           </div>
         </div>
 
-        {/* Sidebar */}
-        <aside className="space-y-4">
+        {/* Properties sidebar */}
+        <aside className="shrink-0 space-y-4 border-t border-[var(--color-line)] bg-[var(--color-surface-warm)] px-5 py-6 md:w-[280px] md:border-l md:border-t-0">
           <div>
-            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
-              Статус
-            </label>
-            <select className={selectClass} value={columnId} onChange={(e) => saveColumn(e.target.value)}>
+            <label className={labelClass}>Статус</label>
+            <select className={fieldClass} value={columnId} onChange={(e) => saveColumn(e.target.value)}>
               {columns.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -373,10 +402,8 @@ export function TaskDetailClient({
           </div>
 
           <div>
-            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
-              Исполнитель
-            </label>
-            <select className={selectClass} value={assigneeId} onChange={(e) => saveAssignee(e.target.value)}>
+            <label className={labelClass}>Исполнитель</label>
+            <select className={fieldClass} value={assigneeId} onChange={(e) => saveAssignee(e.target.value)}>
               <option value="">— не назначен —</option>
               {team.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -387,11 +414,9 @@ export function TaskDetailClient({
           </div>
 
           <div>
-            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
-              Приоритет
-            </label>
+            <label className={labelClass}>Приоритет</label>
             <select
-              className={selectClass}
+              className={fieldClass}
               value={priority}
               onChange={(e) => savePriority(e.target.value as Priority)}
             >
@@ -404,29 +429,29 @@ export function TaskDetailClient({
           </div>
 
           <div>
-            <label className="mb-1 block px-0.5 text-xs font-medium text-[var(--color-muted)]">
-              Дедлайн
-            </label>
+            <label className={labelClass}>Дедлайн</label>
             <input
               type="date"
-              className={selectClass}
+              className={`${fieldClass} font-mono ${
+                dueOverdue ? "border-[#FECDCA] bg-[#FEF3F2] text-[var(--color-urgent)]" : ""
+              }`}
               value={due}
               onChange={(e) => saveDue(e.target.value)}
             />
           </div>
 
-          <div className="space-y-1 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-muted)]">
+          <div className="space-y-1.5 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-muted)]">
             <div className="flex items-center gap-1.5">
               <Avatar name={task.creator.name} size={18} />
               Автор: {task.creator.name}
             </div>
-            <div>Создано: {formatDateTime(task.createdAt)}</div>
+            <div className="font-mono">Создано: {formatDateTime(task.createdAt)}</div>
           </div>
 
           {canDelete && (
             <button
               onClick={removeTask}
-              className="w-full rounded-lg border border-rose-200 px-3 py-1.5 text-sm text-rose-600 transition hover:bg-rose-50"
+              className="w-full rounded-[10px] border border-[#FECDCA] bg-[#FEF3F2] px-3 py-2 text-sm font-medium text-[var(--color-urgent)] transition hover:brightness-95"
             >
               Удалить задачу
             </button>
