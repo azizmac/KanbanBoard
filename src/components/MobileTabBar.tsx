@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logoutAction } from "@/lib/auth-actions";
 
 function IconBoard() {
   return (
@@ -28,10 +27,11 @@ function IconAdmin() {
     </svg>
   );
 }
-function IconLogout() {
+function IconProfile() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }
@@ -42,6 +42,7 @@ export function MobileTabBar({ isAdmin }: { isAdmin: boolean }) {
     { href: "/board", label: "Доска", icon: <IconBoard /> },
     { href: "/team", label: "Команда", icon: <IconTeam /> },
     ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin /> }] : []),
+    { href: "/profile", label: "Профиль", icon: <IconProfile /> },
   ];
 
   return (
@@ -61,15 +62,6 @@ export function MobileTabBar({ isAdmin }: { isAdmin: boolean }) {
           </Link>
         );
       })}
-      <form action={logoutAction} className="flex flex-1">
-        <button
-          type="submit"
-          className="flex flex-1 flex-col items-center justify-center gap-1 text-[11px] text-[var(--color-muted)]"
-        >
-          <IconLogout />
-          Выйти
-        </button>
-      </form>
     </nav>
   );
 }

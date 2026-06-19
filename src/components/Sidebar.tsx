@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { logoutAction } from "@/lib/auth-actions";
 import { Avatar } from "./Avatar";
 
 function IconBoard() {
@@ -31,34 +29,16 @@ function IconAdmin() {
   );
 }
 
-type NavItem = { href: string; label: string; icon: React.ReactNode };
-
-export function Sidebar({
-  name,
-  subtitle,
-  isAdmin,
-}: {
-  name: string;
-  subtitle: string;
-  isAdmin: boolean;
-}) {
+export function Sidebar({ name, isAdmin }: { name: string; isAdmin: boolean }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
-  const items: NavItem[] = [
+  const items = [
     { href: "/board", label: "Доска", icon: <IconBoard /> },
     { href: "/team", label: "Команда", icon: <IconTeam /> },
     ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin /> }] : []),
   ];
+
+  const profileActive = pathname.startsWith("/profile");
 
   return (
     <aside className="sticky top-0 hidden h-screen w-[68px] shrink-0 flex-col items-center gap-1 bg-[var(--color-sidebar)] py-4 md:flex">
@@ -87,31 +67,15 @@ export function Sidebar({
         );
       })}
 
-      <div className="relative mt-auto" ref={ref}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-full ring-2 ring-transparent transition hover:ring-white/20"
-          title={name}
-        >
-          <Avatar name={name} size={36} />
-        </button>
-        {open && (
-          <div className="absolute bottom-0 left-[52px] w-52 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] py-1 shadow-[0_10px_30px_rgba(20,20,20,0.12)]">
-            <div className="border-b border-[var(--color-line)] px-3 py-2">
-              <div className="truncate text-sm font-medium text-[var(--color-ink)]">{name}</div>
-              <div className="truncate text-xs text-[var(--color-muted)]">{subtitle}</div>
-            </div>
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="w-full px-3 py-2 text-left text-sm text-[var(--color-urgent)] transition hover:bg-[#FEF3F2]"
-              >
-                Выйти
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
+      <Link
+        href="/profile"
+        title="Профиль"
+        className={`mt-auto rounded-full ring-2 transition ${
+          profileActive ? "ring-white/70" : "ring-transparent hover:ring-white/20"
+        }`}
+      >
+        <Avatar name={name} size={36} />
+      </Link>
     </aside>
   );
 }
