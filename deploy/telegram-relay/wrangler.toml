@@ -1,0 +1,8 @@
+name = "tg-relay"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Optional: require ?key=... on every request.
+#   npx wrangler secret put RELAY_KEY
+# then use  TELEGRAM_API_ROOT=https://tg-relay.<you>.workers.dev/?key=<RELAY_KEY>
+# (grammY appends the path after the root, so prefer leaving RELAY_KEY unset.)

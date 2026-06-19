@@ -1,0 +1,10 @@
+# Caddy auto-HTTPS reverse proxy for the mini-PC.
+# Replace the domain with yours. Needs:
+#   - DNS A-record  kanban.freshdv.ru -> your white IP (95.165.71.224)
+#   - router forwards ports 80 and 443 to the mini-PC
+# Caddy then fetches a free Let's Encrypt certificate automatically.
+
+kanban.freshdv.ru {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,50 @@
+// Cloudflare Worker — reverse proxy for the Telegram Bot API.
+//
+// Why: from a Russian IP, api.telegram.org is blocked by DPI. Cloudflare is
+// reachable, so we relay every Bot API call through this Worker. Point the app
+// at it with  TELEGRAM_API_ROOT=https://<worker-subdomain>.workers.dev
+//
+// The app already routes through TELEGRAM_API_ROOT (grammY apiRoot + sendTelegram),
+// so no code change is needed — just deploy this and set the env var.
+//
+// Deploy:
+//   cd deploy/telegram-relay
+//   npx wrangler login        # opens browser, free Cloudflare account
+//   npx wrangler deploy       # prints https://tg-relay.<you>.workers.dev
+//
+// Security note: this is an open relay for the Telegram API. A request only does
+// anything if it carries a valid /bot<TOKEN>/... path, so it's effectively as
+// safe as your bot token. Set RELAY_KEY (a wrangler secret) to additionally
+// require a ?key=... query param; leave it unset to keep the relay open.
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/" || url.pathname === "") {
+      return new Response("Telegram relay OK", { status: 200 });
+    }
+
+    // Optional shared-secret gate.
+    if (env.RELAY_KEY && url.searchParams.get("key") !== env.RELAY_KEY) {
+      return new Response("forbidden", { status: 403 });
+    }
+    url.searchParams.delete("key");
+
+    const target = "https://api.telegram.org" + url.pathname + (url.search || "");
+    const init = {
+      method: request.method,
+      headers: request.headers,
+      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+      redirect: "follow",
+    };
+
+    const resp = await fetch(target, init);
+    // Pass the response straight back to the bot.
+    return new Response(resp.body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: resp.headers,
+    });
+  },
+};
