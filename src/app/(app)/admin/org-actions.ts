@@ -19,6 +19,28 @@ function ok() {
   return { ok: true as const };
 }
 
+// ----- Positions (справочник должностей) -----
+
+export async function createPosition(name: string) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  const parsed = nameSchema.safeParse(name);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
+  const exists = await prisma.position.findFirst({ where: { name: { equals: parsed.data, mode: "insensitive" } } });
+  if (exists) return { ok: false as const, error: "Такая должность уже есть" };
+  await prisma.position.create({ data: { name: parsed.data } });
+  revalidatePath("/admin/org");
+  revalidatePath("/admin");
+  return { ok: true as const };
+}
+
+export async function deletePosition(id: string) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  await prisma.position.delete({ where: { id } });
+  revalidatePath("/admin/org");
+  revalidatePath("/admin");
+  return { ok: true as const };
+}
+
 // ----- Regions -----
 
 export async function createRegion(name: string, color = "iris") {

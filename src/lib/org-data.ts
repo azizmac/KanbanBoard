@@ -43,9 +43,14 @@ export async function getRegionsDetail(): Promise<RegionDetail[]> {
   }));
 }
 
+/** Job-title list (справочник должностей). */
+export async function listPositions(): Promise<{ id: string; name: string }[]> {
+  return prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+}
+
 /** Everything the admin org panel edits, with ids for multi-selects. */
 export async function getOrgAdminData() {
-  const [regions, groups, users, boards] = await Promise.all([
+  const [regions, groups, users, boards, positions] = await Promise.all([
     prisma.region.findMany({
       orderBy: { createdAt: "asc" },
       include: { managers: { select: { id: true } }, _count: { select: { boards: true } } },
@@ -60,8 +65,10 @@ export async function getOrgAdminData() {
       select: { id: true, name: true, role: true },
     }),
     prisma.board.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, regionId: true } }),
+    prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   return {
+    positions,
     regions: regions.map((r) => ({
       id: r.id,
       name: r.name,

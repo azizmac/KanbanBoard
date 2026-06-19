@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { listPositions } from "@/lib/org-data";
 import { prisma } from "@/lib/prisma";
 import { AdminPanel, type AdminUser } from "./AdminPanel";
 import { AdminUnlock } from "./AdminUnlock";
@@ -12,9 +13,10 @@ export default async function AdminPage() {
     return <AdminUnlock />;
   }
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ active: "desc" }, { role: "asc" }, { name: "asc" }],
-  });
+  const [users, positions] = await Promise.all([
+    prisma.user.findMany({ orderBy: [{ active: "desc" }, { role: "asc" }, { name: "asc" }] }),
+    listPositions(),
+  ]);
 
   const rows: AdminUser[] = users.map((u) => ({
     id: u.id,
@@ -27,5 +29,5 @@ export default async function AdminPage() {
     telegramLinked: Boolean(u.telegramId),
   }));
 
-  return <AdminPanel users={rows} currentUserId={user.id} />;
+  return <AdminPanel users={rows} currentUserId={user.id} positions={positions} />;
 }

@@ -11,5 +11,13 @@ export default async function OrgPage() {
   if (!canManageOrg(user)) return <AdminUnlock />;
 
   const data = await getOrgAdminData();
-  return <OrgPanel regions={data.regions} groups={data.groups} users={data.users} boards={data.boards} />;
+  return (
+    <OrgPanel
+      regions={data.regions}
+      groups={data.groups}
+      users={data.users}
+      boards={data.boards}
+      positions={data.positions}
+    />
+  );
 }

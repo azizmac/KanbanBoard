@@ -47,9 +47,11 @@ const FILTERS: { key: "ALL" | Role; label: string }[] = [
 export function AdminPanel({
   users,
   currentUserId,
+  positions,
 }: {
   users: AdminUser[];
   currentUserId: string;
+  positions: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<AdminUser[]>(users);
@@ -321,15 +323,21 @@ export function AdminPanel({
 
             {/* position + manager */}
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input
+              <select
                 className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] outline-none focus:border-[var(--color-accent)]"
-                placeholder="Должность"
-                value={u.position ?? ""}
-                onChange={(e) =>
-                  setRows((rs) => rs.map((r) => (r.id === u.id ? { ...r, position: e.target.value } : r)))
-                }
-                onBlur={(e) => patch(u.id, { position: e.target.value })}
-              />
+                value={positions.some((p) => p.name === u.position) ? (u.position ?? "") : ""}
+                onChange={(e) => patch(u.id, { position: e.target.value || null })}
+              >
+                <option value="">— должность —</option>
+                {positions.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+                {u.position && !positions.some((p) => p.name === u.position) && (
+                  <option value={u.position}>{u.position} (вне справочника)</option>
+                )}
+              </select>
               <select
                 className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)]"
                 value={u.managerId ?? ""}

@@ -74,6 +74,14 @@ model Region {
   managers  User[]   @relation("RegionManagers")
 }
 
+// Справочник должностей — admin-managed list of job titles. A user's `position`
+// string is set from this list.
+model Position {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Group {
   id        String   @id @default(cuid())
   name      String

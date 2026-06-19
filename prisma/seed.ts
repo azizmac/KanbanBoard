@@ -32,7 +32,17 @@ async function main() {
   await prisma.board.deleteMany();
   await prisma.region.deleteMany();
   await prisma.session.deleteMany();
+  await prisma.position.deleteMany();
   await prisma.user.deleteMany();
+
+  console.log("Creating positions…");
+  await prisma.position.createMany({
+    data: [
+      "CEO / Founder", "Tech Lead", "Product Manager", "Backend Developer",
+      "Frontend Developer", "QA Engineer", "Mobile Developer", "DevOps Engineer",
+      "UX/UI Designer", "Marketing Manager",
+    ].map((name) => ({ name })),
+  });
 
   console.log("Creating users…");
   const anna = await prisma.user.create({

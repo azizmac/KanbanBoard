@@ -7,8 +7,10 @@ import { roleLabels } from "@/lib/constants";
 import { tint } from "@/lib/tints";
 import {
   createGroup,
+  createPosition,
   createRegion,
   deleteGroup,
+  deletePosition,
   deleteRegion,
   renameGroup,
   renameRegion,
@@ -74,11 +76,13 @@ export function OrgPanel({
   groups,
   users,
   boards,
+  positions,
 }: {
   regions: Region[];
   groups: Group[];
   users: UserOpt[];
   boards: BoardOpt[];
+  positions: Opt[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -86,6 +90,7 @@ export function OrgPanel({
   const [newRegion, setNewRegion] = useState("");
   const [newGroup, setNewGroup] = useState("");
   const [newGroupRegion, setNewGroupRegion] = useState<string>(regions[0]?.id ?? "");
+  const [newPosition, setNewPosition] = useState("");
 
   function run(p: Promise<{ ok: boolean; error?: string }>) {
     startTransition(async () => {
@@ -234,6 +239,40 @@ export function OrgPanel({
             );
           })}
           {groups.length === 0 && <p className="text-sm text-[var(--color-muted)]">Групп пока нет.</p>}
+        </div>
+      </section>
+
+      {/* Positions */}
+      <section className="mt-9">
+        <h2 className={sectionLabel}>Должности</h2>
+        <p className="mb-3 text-[13px] text-[var(--color-muted)]">
+          Справочник должностей. Назначаются пользователям в «Управление доступом».
+        </p>
+        <div className="mb-3 flex gap-2">
+          <input
+            value={newPosition}
+            onChange={(e) => setNewPosition(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && newPosition.trim() && (run(createPosition(newPosition.trim())), setNewPosition(""))}
+            placeholder="Новая должность…"
+            className="h-9 w-[260px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+          />
+          <button
+            onClick={() => newPosition.trim() && (run(createPosition(newPosition.trim())), setNewPosition(""))}
+            className="rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
+          >
+            Добавить
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {positions.map((p) => (
+            <span key={p.id} className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[13px] font-medium">
+              {p.name}
+              <button onClick={() => confirm(`Удалить должность «${p.name}»?`) && run(deletePosition(p.id))} className="text-[var(--color-faint)] hover:text-[var(--color-urgent)]">
+                ✕
+              </button>
+            </span>
+          ))}
+          {positions.length === 0 && <p className="text-sm text-[var(--color-muted)]">Должностей пока нет.</p>}
         </div>
       </section>
     </div>
