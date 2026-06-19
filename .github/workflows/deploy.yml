@@ -23,9 +23,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Write deploy/.env.prod from secret
-        shell: pwsh
+        shell: powershell
         run: |
-          [System.IO.File]::WriteAllText("$PWD/deploy/.env.prod", $env:ENV_PROD)
+          [System.IO.File]::WriteAllText("$(Get-Location)\deploy\.env.prod", $env:ENV_PROD)
         env:
           ENV_PROD: ${{ secrets.ENV_PROD }}
 
