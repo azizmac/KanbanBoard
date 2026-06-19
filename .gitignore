@@ -37,6 +37,10 @@ yarn-error.log*
 # uploaded files (local storage for attachments)
 /uploads
 
+# design handoff artifacts (local reference only)
+/design.zip
+/design_handoff_*
+
 # vercel
 .vercel
 
