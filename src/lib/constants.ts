@@ -13,12 +13,19 @@ export const priorityLabels: Record<Priority, string> = {
   URGENT: "Срочно",
 };
 
-// Tailwind-friendly accent per priority (used for the small dot/label).
-export const priorityClasses: Record<Priority, string> = {
-  LOW: "text-slate-400",
-  NORMAL: "text-sky-500",
-  HIGH: "text-amber-500",
-  URGENT: "text-rose-500",
+// Priority chip (background + text) and the small status dot.
+export const priorityChip: Record<Priority, string> = {
+  LOW: "bg-[var(--color-low-bg)] text-[var(--color-low)]",
+  NORMAL: "bg-[var(--color-normal-bg)] text-[var(--color-normal)]",
+  HIGH: "bg-[var(--color-high-bg)] text-[var(--color-high)]",
+  URGENT: "bg-[var(--color-urgent-bg)] text-[var(--color-urgent)]",
+};
+
+export const priorityDot: Record<Priority, string> = {
+  LOW: "bg-[var(--color-low-dot)]",
+  NORMAL: "bg-[var(--color-normal-dot)]",
+  HIGH: "bg-[var(--color-high-dot)]",
+  URGENT: "bg-[var(--color-urgent-dot)]",
 };
 
 export const notificationLabels: Record<NotificationType, string> = {

@@ -160,7 +160,7 @@ export function BoardView({ board }: { board: BoardData }) {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="pb-4">
       <DndContext
         id="kanban-board"
         sensors={sensors}
@@ -170,7 +170,7 @@ export function BoardView({ board }: { board: BoardData }) {
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTask(null)}
       >
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto px-1 pb-2">
           {columns.map((column) => (
             <ColumnView key={column.id} column={column} onAddTask={handleAddTask} />
           ))}
@@ -178,7 +178,7 @@ export function BoardView({ board }: { board: BoardData }) {
 
         <DragOverlay>
           {activeTask ? (
-            <div className="w-72">
+            <div className="w-[286px] rotate-1">
               <TaskCardContent task={activeTask} dragging />
             </div>
           ) : null}
