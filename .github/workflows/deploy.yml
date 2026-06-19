@@ -1,0 +1,39 @@
+name: Deploy to mini-PC
+
+# Push-to-deploy: a self-hosted runner ON the mini-PC rebuilds the images and
+# (re)starts the stack via docker compose. Reuses the host's kanban-pg / kanban-minio.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-minipc
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, kanban]
+    env:
+      # Avoid the Docker Desktop credential helper (fails in non-interactive
+      # service sessions) — public base images need no auth.
+      DOCKER_CONFIG: C:\Users\minipc\dockercfg
+      COMPOSE_BAKE: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write deploy/.env.prod from secret
+        shell: pwsh
+        run: |
+          [System.IO.File]::WriteAllText("$PWD/deploy/.env.prod", $env:ENV_PROD)
+        env:
+          ENV_PROD: ${{ secrets.ENV_PROD }}
+
+      - name: Build & start stack
+        shell: cmd
+        working-directory: deploy
+        run: docker compose -f docker-compose.minipc.yml --env-file .env.prod up -d --build
+
+      - name: Prune old images
+        shell: cmd
+        run: docker image prune -f
