@@ -54,6 +54,7 @@ services:
     command: npx tsx scripts/bot.ts
     restart: unless-stopped
     environment:
+      TZ: Europe/Moscow
       DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}

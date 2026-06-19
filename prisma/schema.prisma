@@ -112,6 +112,9 @@ model Board {
   region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
   groups   Group[] @relation("BoardGroups")
 
+  // a Telegram group chat linked to this board (for /tasks digests)
+  telegramChatId String? @unique
+
   @@index([regionId])
 }
 

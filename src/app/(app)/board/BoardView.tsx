@@ -19,6 +19,7 @@ import { AvatarStack } from "@/components/Avatar";
 import { pluralTasks } from "@/lib/format";
 import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
 import { BoardSwitcher } from "./BoardSwitcher";
+import { BoardTelegramButton } from "./BoardTelegramButton";
 import { ColumnView } from "./ColumnView";
 import { TaskCardContent } from "./TaskCardView";
 import { createTask, moveTask } from "./actions";
@@ -29,12 +30,14 @@ export function BoardView({
   regions,
   memberNames,
   canCreate,
+  tgLink,
 }: {
   board: BoardData;
   boards: BoardOption[];
   regions: { id: string; name: string }[];
   memberNames: string[];
   canCreate: boolean;
+  tgLink: { code: string; botUsername: string } | null;
 }) {
   const [columns, setColumns] = useState<ColumnData[]>(board.columns);
   const columnsRef = useRef<ColumnData[]>(board.columns);
@@ -219,6 +222,9 @@ export function BoardView({
               className="h-9 w-[180px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] pl-8 pr-3 text-[13px] outline-none focus:border-[var(--color-accent)]"
             />
           </div>
+          {tgLink && (
+            <BoardTelegramButton code={tgLink.code} botUsername={tgLink.botUsername} boardName={board.name} />
+          )}
           <button
             onClick={newTask}
             className="flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"

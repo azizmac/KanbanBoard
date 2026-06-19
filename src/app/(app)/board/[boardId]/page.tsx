@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { isDirector, isRegional } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
+import { makeBoardLinkCode } from "@/lib/board-link";
 import { getBoard, getBoardOptions } from "@/lib/board-data";
 import { listManageableRegions } from "@/lib/org-data";
 import { BoardView } from "../BoardView";
@@ -30,6 +31,10 @@ export default async function BoardPage({
     ),
   ];
 
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+  const tgLink =
+    canCreate && botUsername ? { code: makeBoardLinkCode(board.id), botUsername } : null;
+
   return (
     <BoardView
       board={board}
@@ -37,6 +42,7 @@ export default async function BoardPage({
       regions={regions}
       memberNames={memberNames}
       canCreate={canCreate}
+      tgLink={tgLink}
     />
   );
 }
