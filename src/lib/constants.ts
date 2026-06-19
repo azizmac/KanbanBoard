@@ -1,9 +1,11 @@
 import type { NotificationType, Priority, Role } from "@/generated/prisma/client";
 
+// Role tiers, relabeled as the org hierarchy (see lib/access.ts):
+//   ADMIN = Директор, MANAGER = Регионал, MEMBER = Линейный
 export const roleLabels: Record<Role, string> = {
-  ADMIN: "Администратор",
-  MANAGER: "Менеджер",
-  MEMBER: "Участник",
+  ADMIN: "Директор",
+  MANAGER: "Регионал",
+  MEMBER: "Линейный",
 };
 
 export const priorityLabels: Record<Priority, string> = {

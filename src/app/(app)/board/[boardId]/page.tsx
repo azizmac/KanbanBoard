@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
-import { can, requireUser } from "@/lib/auth";
+import { isDirector, isRegional } from "@/lib/access";
+import { requireUser } from "@/lib/auth";
 import { getBoard, getBoardOptions } from "@/lib/board-data";
+import { listManageableRegions } from "@/lib/org-data";
 import { BoardView } from "../BoardView";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +13,12 @@ export default async function BoardPage({
   params: Promise<{ boardId: string }>;
 }) {
   const { boardId } = await params;
-  const [user, board, boards] = await Promise.all([
-    requireUser(),
-    getBoard(boardId),
-    getBoardOptions(),
+  const user = await requireUser();
+  const canCreate = isDirector(user) || isRegional(user);
+  const [board, boards, regions] = await Promise.all([
+    getBoard(user, boardId),
+    getBoardOptions(user),
+    canCreate ? listManageableRegions(user) : Promise.resolve([]),
   ]);
 
   if (!board) notFound();
@@ -30,8 +34,9 @@ export default async function BoardPage({
     <BoardView
       board={board}
       boards={boards}
+      regions={regions}
       memberNames={memberNames}
-      canCreate={can(user, "manageBoard")}
+      canCreate={canCreate}
     />
   );
 }

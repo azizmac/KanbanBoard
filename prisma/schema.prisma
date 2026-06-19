@@ -46,7 +46,44 @@ model User {
   notifications Notification[]
   activities    Activity[]
 
+  // org hierarchy: regions a (regional) manager runs + groups the user belongs to
+  managedRegions Region[] @relation("RegionManagers")
+  groups         Group[]  @relation("GroupMembers")
+
   @@index([managerId])
+}
+
+// ----- Org hierarchy: regions + access groups -----
+//
+// Role tiers (Role enum, relabeled in the UI — see lib/access.ts):
+//   ADMIN   = Директор  — sees ALL boards, creates regions, assigns managers
+//   MANAGER = Регионал   — runs assigned region(s): creates boards + groups there,
+//             invites linear staff into groups
+//   MEMBER  = Линейный   — sees only boards whose attached groups include them
+//
+// Board access = director (all) OR regional of the board's region OR member of any
+// group attached to the board.
+
+model Region {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("iris")
+  createdAt DateTime @default(now())
+  boards    Board[]
+  groups    Group[]
+  managers  User[]   @relation("RegionManagers")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  regionId  String?
+  region    Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  members   User[]   @relation("GroupMembers")
+  boards    Board[]  @relation("BoardGroups")
+
+  @@index([regionId])
 }
 
 model Session {
@@ -69,6 +106,13 @@ model Board {
   createdAt DateTime @default(now())
   columns   Column[]
   tags      Tag[]
+
+  // org: the region this board lives in, and the access groups attached to it
+  regionId String?
+  region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  groups   Group[] @relation("BoardGroups")
+
+  @@index([regionId])
 }
 
 model Column {

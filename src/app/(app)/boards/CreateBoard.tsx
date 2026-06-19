@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { NewBoardDialog } from "./NewBoardDialog";
+import { NewBoardDialog, type RegionChoice } from "./NewBoardDialog";
 
-export function CreateBoard({ variant }: { variant: "button" | "tile" }) {
+export function CreateBoard({ variant, regions }: { variant: "button" | "tile"; regions: RegionChoice[] }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -31,7 +31,7 @@ export function CreateBoard({ variant }: { variant: "button" | "tile" }) {
           <span className="text-sm font-semibold">Создать доску</span>
         </button>
       )}
-      {open && <NewBoardDialog onClose={() => setOpen(false)} />}
+      {open && <NewBoardDialog regions={regions} onClose={() => setOpen(false)} />}
     </>
   );
 }

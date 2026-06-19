@@ -26,11 +26,13 @@ import { createTask, moveTask } from "./actions";
 export function BoardView({
   board,
   boards,
+  regions,
   memberNames,
   canCreate,
 }: {
   board: BoardData;
   boards: BoardOption[];
+  regions: { id: string; name: string }[];
   memberNames: string[];
   canCreate: boolean;
 }) {
@@ -190,7 +192,7 @@ export function BoardView({
     <div className="flex min-h-screen flex-col">
       {/* ---- Desktop top bar ---- */}
       <div className="sticky top-0 z-20 hidden h-[62px] shrink-0 items-center gap-4 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 sm:flex">
-        <BoardSwitcher current={board} boards={boards} canCreate={canCreate} />
+        <BoardSwitcher current={board} boards={boards} regions={regions} canCreate={canCreate} />
         <div className="hidden h-[22px] w-px bg-[var(--color-line)] lg:block" />
         <span className="hidden whitespace-nowrap text-[13px] text-[var(--color-muted)] lg:inline">
           {pluralTasks(total)} · {inProgress} в работе
@@ -231,7 +233,7 @@ export function BoardView({
 
       {/* ---- Mobile header + column pills ---- */}
       <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 pt-3 pb-2.5 sm:hidden">
-        <BoardSwitcher current={board} boards={boards} canCreate={canCreate} />
+        <BoardSwitcher current={board} boards={boards} regions={regions} canCreate={canCreate} />
         <div className="scroll-thin -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
           {columns.map((c) => {
             const on = c.id === activeColumnId;

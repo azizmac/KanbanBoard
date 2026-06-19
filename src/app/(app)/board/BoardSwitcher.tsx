@@ -28,10 +28,12 @@ function BoardBadge({ name, color, size = 22 }: { name: string; color: string; s
 export function BoardSwitcher({
   current,
   boards,
+  regions,
   canCreate,
 }: {
   current: BoardOption;
   boards: BoardOption[];
+  regions: { id: string; name: string }[];
   canCreate: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -107,7 +109,7 @@ export function BoardSwitcher({
         </div>
       )}
 
-      {creating && <NewBoardDialog onClose={() => setCreating(false)} />}
+      {creating && <NewBoardDialog regions={regions} onClose={() => setCreating(false)} />}
     </div>
   );
 }

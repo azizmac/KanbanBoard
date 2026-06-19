@@ -5,10 +5,19 @@ import { useState, useTransition } from "react";
 import { BOARD_TINT_KEYS, tint } from "@/lib/tints";
 import { createBoard } from "../board/actions";
 
-export function NewBoardDialog({ onClose }: { onClose: () => void }) {
+export type RegionChoice = { id: string; name: string };
+
+export function NewBoardDialog({
+  onClose,
+  regions,
+}: {
+  onClose: () => void;
+  regions: RegionChoice[];
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(BOARD_TINT_KEYS[0]);
+  const [regionId, setRegionId] = useState<string>(regions[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -18,8 +27,12 @@ export function NewBoardDialog({ onClose }: { onClose: () => void }) {
       setError("Введите название");
       return;
     }
+    if (regions.length > 0 && !regionId) {
+      setError("Выберите регион");
+      return;
+    }
     startTransition(async () => {
-      const res = await createBoard({ name: trimmed, color });
+      const res = await createBoard({ name: trimmed, color, regionId: regionId || null });
       if (res.ok) {
         onClose();
         router.push(`/board/${res.id}`);
@@ -88,6 +101,29 @@ export function NewBoardDialog({ onClose }: { onClose: () => void }) {
             );
           })}
         </div>
+
+        {regions.length > 0 ? (
+          <>
+            <label className="mb-1.5 mt-4 block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]">
+              Регион
+            </label>
+            <select
+              value={regionId}
+              onChange={(e) => setRegionId(e.target.value)}
+              className="h-[42px] w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+            >
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <p className="mt-4 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3 py-2 text-[13px] text-[var(--color-muted)]">
+            Нет доступных регионов. Создайте регион в «Управление доступом → Регионы».
+          </p>
+        )}
 
         {error && <p className="mt-3 text-sm text-[var(--color-urgent)]">{error}</p>}
 

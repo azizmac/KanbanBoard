@@ -28,7 +28,9 @@ async function main() {
   await prisma.task.deleteMany();
   await prisma.tag.deleteMany();
   await prisma.column.deleteMany();
+  await prisma.group.deleteMany();
   await prisma.board.deleteMany();
+  await prisma.region.deleteMany();
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
 
@@ -61,9 +63,22 @@ async function main() {
   }
   const [igor, maria, pavel, sergey, alexey, olga, natalia] = members;
 
-  async function makeBoard(name: string, color: string) {
+  console.log("Creating regions…");
+  const sever = await prisma.region.create({
+    data: { name: "Север", color: "blue", managers: { connect: [{ id: dmitry.id }] } },
+  });
+  const yug = await prisma.region.create({
+    data: { name: "Юг", color: "amber", managers: { connect: [{ id: elena.id }] } },
+  });
+
+  async function makeBoard(name: string, color: string, regionId: string) {
     const board = await prisma.board.create({
-      data: { name, color, columns: { create: COLUMNS.map((n, position) => ({ name: n, position })) } },
+      data: {
+        name,
+        color,
+        regionId,
+        columns: { create: COLUMNS.map((n, position) => ({ name: n, position })) },
+      },
       include: { columns: { orderBy: { position: "asc" } } },
     });
     const [backlog, inProgress, review, done] = board.columns;
@@ -71,7 +86,7 @@ async function main() {
   }
 
   console.log("Creating boards…");
-  const dev = await makeBoard("Разработка платформы", "iris");
+  const dev = await makeBoard("Разработка платформы", "iris", sever.id);
 
   // tags for the dev board
   const tPay = await prisma.tag.create({ data: { name: "Платежи", color: "pink", boardId: dev.board.id } });
@@ -133,7 +148,7 @@ async function main() {
   for (const data of devTasks) await prisma.task.create({ data });
 
   // Second board — Marketing
-  const mkt = await makeBoard("Маркетинг Q3", "pink");
+  const mkt = await makeBoard("Маркетинг Q3", "pink", yug.id);
   const mktTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
     { title: "Контент-план на сентябрь", columnId: mkt.backlog.id, position: 0, creatorId: elena.id, assigneeId: natalia.id, priority: "NORMAL" },
     { title: "Запуск рекламной кампании", columnId: mkt.inProgress.id, position: 0, creatorId: natalia.id, assigneeId: natalia.id, priority: "HIGH", dueDate: daysFromNow(3) },
@@ -142,15 +157,32 @@ async function main() {
   for (const data of mktTasks) await prisma.task.create({ data });
 
   // Third board — Support
-  const sup = await makeBoard("Поддержка клиентов", "green");
+  const sup = await makeBoard("Поддержка клиентов", "green", sever.id);
   const supTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
     { title: "База знаний: топ-20 вопросов", columnId: sup.inProgress.id, position: 0, creatorId: elena.id, assigneeId: pavel.id, priority: "NORMAL" },
     { title: "Шаблоны ответов в поддержке", columnId: sup.done.id, position: 0, creatorId: anna.id, assigneeId: maria.id, priority: "LOW" },
   ];
   for (const data of supTasks) await prisma.task.create({ data });
 
-  const boardCount = 3;
-  console.log(`✅ Seed done: ${3 + members.length} users, ${boardCount} boards.`);
+  console.log("Creating access groups…");
+  await prisma.group.create({
+    data: {
+      name: "Команда разработки",
+      regionId: sever.id,
+      members: { connect: [{ id: igor.id }, { id: maria.id }, { id: pavel.id }] },
+      boards: { connect: [{ id: dev.board.id }] },
+    },
+  });
+  await prisma.group.create({
+    data: {
+      name: "Маркетинг",
+      regionId: yug.id,
+      members: { connect: [{ id: olga.id }, { id: natalia.id }] },
+      boards: { connect: [{ id: mkt.board.id }] },
+    },
+  });
+
+  console.log(`✅ Seed done: ${3 + members.length} users, 3 boards, 2 regions, 2 groups.`);
 }
 
 main()

@@ -1,3 +1,4 @@
+import { type Actor, visibleBoardWhere } from "./access";
 import { relativeUpdated } from "./format";
 import { prisma } from "./prisma";
 import type { BoardData, BoardOption, BoardSummary, TaskCard } from "./types";
@@ -43,10 +44,11 @@ function toCard(t: {
   };
 }
 
-/** Load one board (by id, or the first board if none given), shaped for the board view. */
-export async function getBoard(boardId?: string): Promise<BoardData | null> {
+/** Load one board the user may access (by id, or their first board), for the board view. */
+export async function getBoard(user: Actor, boardId?: string): Promise<BoardData | null> {
+  const scope = await visibleBoardWhere(user);
   const board = await prisma.board.findFirst({
-    where: boardId ? { id: boardId } : undefined,
+    where: { AND: [scope, boardId ? { id: boardId } : {}] },
     orderBy: { createdAt: "asc" },
     include: {
       columns: {
@@ -70,18 +72,20 @@ export async function getBoard(boardId?: string): Promise<BoardData | null> {
   };
 }
 
-/** Lightweight list of all boards for the header switcher. */
-export async function getBoardOptions(): Promise<BoardOption[]> {
+/** Lightweight list of the user's boards for the header switcher. */
+export async function getBoardOptions(user: Actor): Promise<BoardOption[]> {
   const boards = await prisma.board.findMany({
+    where: await visibleBoardWhere(user),
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true, color: true },
   });
   return boards;
 }
 
-/** All boards with progress + members, for the "Все доски" overview. */
-export async function getBoardSummaries(): Promise<BoardSummary[]> {
+/** The user's boards with progress + members, for the "Все доски" overview. */
+export async function getBoardSummaries(user: Actor): Promise<BoardSummary[]> {
   const boards = await prisma.board.findMany({
+    where: await visibleBoardWhere(user),
     orderBy: { createdAt: "asc" },
     include: {
       columns: {

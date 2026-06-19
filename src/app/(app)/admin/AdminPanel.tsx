@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
@@ -146,6 +147,16 @@ export function AdminPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/org"
+            className="flex h-10 items-center gap-2 rounded-[11px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2 2 7l10 5 10-5-10-5z" />
+              <path d="m2 17 10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+            Регионы и группы
+          </Link>
           <button
             onClick={genInvite}
             className="flex h-10 items-center gap-2 rounded-[11px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)]"

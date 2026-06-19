@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { canAccessBoard } from "@/lib/access";
 import { can, requireUser } from "@/lib/auth";
 import { nowMs } from "@/lib/format";
 import { getBoardTags, getColumnOptions, getTaskDetail, getTeam } from "@/lib/task-data";
@@ -17,6 +18,7 @@ export default async function TaskPage({
   const [task, team] = await Promise.all([getTaskDetail(taskId), getTeam()]);
 
   if (!task) notFound();
+  if (!(await canAccessBoard(user, task.board.id))) notFound();
 
   const [columns, boardTags] = await Promise.all([
     getColumnOptions(task.board.id),

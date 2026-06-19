@@ -1,0 +1,80 @@
+import type { Prisma, Role } from "@/generated/prisma/client";
+import { prisma } from "./prisma";
+
+// ---- Role tiers ----
+// The Role enum is reused but relabeled as the org hierarchy:
+//   ADMIN   → Директор  (sees ALL boards, manages regions/roles)
+//   MANAGER → Регионал   (runs assigned region(s): boards, groups, invites)
+//   MEMBER  → Линейный   (sees boards via group membership only)
+// See prisma/schema.prisma and docs/ACCESS.md.
+
+export type Actor = { id: string; role: Role };
+
+export function isDirector(u: Actor) {
+  return u.role === "ADMIN";
+}
+export function isRegional(u: Actor) {
+  return u.role === "MANAGER";
+}
+
+export function canManageOrg(u: Actor) {
+  // create/edit regions, assign managers, manage all users
+  return isDirector(u);
+}
+
+/** Prisma `where` fragment selecting the boards a user may see. */
+export async function visibleBoardWhere(user: Actor): Promise<Prisma.BoardWhereInput> {
+  if (isDirector(user)) return {}; // everything
+
+  const inMyGroups: Prisma.BoardWhereInput = {
+    groups: { some: { members: { some: { id: user.id } } } },
+  };
+
+  if (isRegional(user)) {
+    const regions = await prisma.region.findMany({
+      where: { managers: { some: { id: user.id } } },
+      select: { id: true },
+    });
+    return { OR: [{ regionId: { in: regions.map((r) => r.id) } }, inMyGroups] };
+  }
+
+  // staff
+  return inMyGroups;
+}
+
+export async function canAccessBoard(user: Actor, boardId: string): Promise<boolean> {
+  if (isDirector(user)) return true;
+  const where = await visibleBoardWhere(user);
+  const found = await prisma.board.findFirst({
+    where: { AND: [{ id: boardId }, where] },
+    select: { id: true },
+  });
+  return Boolean(found);
+}
+
+/** Region ids a user may create boards / groups in. Directors → all (null = any). */
+export async function manageableRegionIds(user: Actor): Promise<string[] | null> {
+  if (isDirector(user)) return null; // any
+  if (isRegional(user)) {
+    const regions = await prisma.region.findMany({
+      where: { managers: { some: { id: user.id } } },
+      select: { id: true },
+    });
+    return regions.map((r) => r.id);
+  }
+  return [];
+}
+
+export async function canCreateBoardInRegion(user: Actor, regionId: string | null): Promise<boolean> {
+  if (isDirector(user)) return true;
+  if (!isRegional(user) || !regionId) return false;
+  const ids = await manageableRegionIds(user);
+  return Boolean(ids && ids.includes(regionId));
+}
+
+/** Can the user manage a given board (settings, delete, groups)? */
+export async function canManageBoard(user: Actor, board: { regionId: string | null }): Promise<boolean> {
+  if (isDirector(user)) return true;
+  if (!isRegional(user)) return false;
+  return canCreateBoardInRegion(user, board.regionId);
+}

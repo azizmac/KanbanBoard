@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AvatarStack } from "@/components/Avatar";
-import { can, requireUser } from "@/lib/auth";
+import { isDirector, isRegional } from "@/lib/access";
+import { requireUser } from "@/lib/auth";
 import { getBoardSummaries } from "@/lib/board-data";
 import { pluralBoards, pluralTasks } from "@/lib/format";
+import { listManageableRegions } from "@/lib/org-data";
 import { tint } from "@/lib/tints";
 import type { BoardSummary } from "@/lib/types";
 import { CreateBoard } from "./CreateBoard";
@@ -10,8 +12,12 @@ import { CreateBoard } from "./CreateBoard";
 export const dynamic = "force-dynamic";
 
 export default async function BoardsPage() {
-  const [user, boards] = await Promise.all([requireUser(), getBoardSummaries()]);
-  const canCreate = can(user, "manageBoard");
+  const user = await requireUser();
+  const [boards, regions] = await Promise.all([
+    getBoardSummaries(user),
+    listManageableRegions(user),
+  ]);
+  const canCreate = isDirector(user) || isRegional(user);
 
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-7 sm:px-9">
@@ -20,14 +26,14 @@ export default async function BoardsPage() {
           <h1 className="text-[25px] font-bold tracking-[-0.03em]">Доски</h1>
           <p className="mt-1 text-sm text-[var(--color-muted)]">{pluralBoards(boards.length)}</p>
         </div>
-        {canCreate && <CreateBoard variant="button" />}
+        {canCreate && <CreateBoard variant="button" regions={regions} />}
       </div>
 
       <div className="mt-7 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
         {boards.map((b) => (
           <BoardCard key={b.id} board={b} />
         ))}
-        {canCreate && <CreateBoard variant="tile" />}
+        {canCreate && <CreateBoard variant="tile" regions={regions} />}
         {boards.length === 0 && !canCreate && (
           <p className="text-sm text-[var(--color-muted)]">Вам пока не открыли ни одной доски.</p>
         )}
