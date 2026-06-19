@@ -44,6 +44,7 @@ model User {
   mentions      Mention[]
   sessions      Session[]
   notifications Notification[]
+  activities    Activity[]
 
   @@index([managerId])
 }
@@ -113,9 +114,39 @@ model Task {
   mentions    Mention[]
   tags        Tag[]
   checklist   ChecklistItem[]
+  activities  Activity[]
 
   @@index([columnId])
   @@index([assigneeId])
+}
+
+// GitLab-style task history (system notes): who changed what, when.
+enum ActivityKind {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  PRIORITY_CHANGED
+  DUE_CHANGED
+  DUE_CLEARED
+  TITLE_CHANGED
+  DESCRIPTION_CHANGED
+  TAG_ADDED
+  TAG_REMOVED
+  ATTACHMENT_ADDED
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  taskId    String
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User         @relation(fields: [actorId], references: [id])
+  kind      ActivityKind
+  detail    String? // pre-rendered detail, e.g. "В работе → Готово"
+  createdAt DateTime     @default(now())
+
+  @@index([taskId])
 }
 
 // Coloured label attached to tasks; scoped to a board.

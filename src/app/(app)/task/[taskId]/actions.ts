@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordActivity } from "@/lib/activity";
 import { can, requireUser } from "@/lib/auth";
+import { priorityLabels } from "@/lib/constants";
 import { processMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
@@ -43,6 +45,50 @@ export async function updateTask(
   }
 
   const updated = await prisma.task.update({ where: { id: taskId }, data: patch });
+
+  // --- record history (system notes) for each changed field ---
+  if (data.columnId !== undefined && data.columnId !== current.columnId) {
+    const [oldCol, newCol] = await Promise.all([
+      prisma.column.findUnique({ where: { id: current.columnId }, select: { name: true } }),
+      prisma.column.findUnique({ where: { id: data.columnId }, select: { name: true } }),
+    ]);
+    await recordActivity(taskId, user.id, "STATUS_CHANGED", `${oldCol?.name ?? "?"} → ${newCol?.name ?? "?"}`);
+  }
+  if (data.assigneeId !== undefined && (data.assigneeId || null) !== current.assigneeId) {
+    if (data.assigneeId) {
+      const u = await prisma.user.findUnique({ where: { id: data.assigneeId }, select: { name: true } });
+      await recordActivity(taskId, user.id, "ASSIGNED", u?.name ?? null);
+    } else {
+      await recordActivity(taskId, user.id, "UNASSIGNED");
+    }
+  }
+  if (data.priority !== undefined && data.priority !== current.priority) {
+    await recordActivity(
+      taskId, user.id, "PRIORITY_CHANGED",
+      `${priorityLabels[current.priority]} → ${priorityLabels[data.priority]}`,
+    );
+  }
+  if (data.dueDate !== undefined) {
+    const newDue = data.dueDate ? new Date(data.dueDate) : null;
+    const oldMs = current.dueDate?.getTime() ?? null;
+    const newMs = newDue?.getTime() ?? null;
+    if (oldMs !== newMs) {
+      if (newDue) {
+        await recordActivity(
+          taskId, user.id, "DUE_CHANGED",
+          newDue.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }),
+        );
+      } else {
+        await recordActivity(taskId, user.id, "DUE_CLEARED");
+      }
+    }
+  }
+  if (data.title !== undefined && data.title !== current.title) {
+    await recordActivity(taskId, user.id, "TITLE_CHANGED");
+  }
+  if (data.description !== undefined && (data.description || null) !== (current.description || null)) {
+    await recordActivity(taskId, user.id, "DESCRIPTION_CHANGED");
+  }
 
   // Notify a newly-assigned user (skip self-assignment).
   const newAssignee = patch.assigneeId as string | null | undefined;
@@ -148,7 +194,7 @@ const tagSchema = z.object({
 
 /** Attach a tag to a task, creating it on the board if it doesn't exist yet. */
 export async function addTaskTag(taskId: string, input: z.input<typeof tagSchema>) {
-  await requireUser();
+  const user = await requireUser();
   const parsed = tagSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
 
@@ -167,6 +213,7 @@ export async function addTaskTag(taskId: string, input: z.input<typeof tagSchema
     tag = await prisma.tag.create({ data: { name, color: parsed.data.color ?? "gray", boardId } });
   }
   await prisma.task.update({ where: { id: taskId }, data: { tags: { connect: { id: tag.id } } } });
+  await recordActivity(taskId, user.id, "TAG_ADDED", tag.name);
 
   revalidatePath(`/task/${taskId}`);
   revalidatePath("/board/[boardId]", "page");
@@ -174,8 +221,10 @@ export async function addTaskTag(taskId: string, input: z.input<typeof tagSchema
 }
 
 export async function removeTaskTag(taskId: string, tagId: string) {
-  await requireUser();
+  const user = await requireUser();
+  const tag = await prisma.tag.findUnique({ where: { id: tagId }, select: { name: true } });
   await prisma.task.update({ where: { id: taskId }, data: { tags: { disconnect: { id: tagId } } } });
+  if (tag) await recordActivity(taskId, user.id, "TAG_REMOVED", tag.name);
   revalidatePath(`/task/${taskId}`);
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };

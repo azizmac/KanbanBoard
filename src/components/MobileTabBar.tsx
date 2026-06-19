@@ -11,6 +11,14 @@ function IconBoard() {
     </svg>
   );
 }
+function IconMine() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  );
+}
 function IconTeam() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -40,6 +48,7 @@ export function MobileTabBar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const items = [
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
+    { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
     { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
     ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }] : []),
     { href: "/profile", label: "Профиль", icon: <IconProfile />, match: ["/profile"] },

@@ -24,6 +24,38 @@ export function pluralBoards(n: number) {
   return plural(n, "доска", "доски", "досок");
 }
 
+/** Human-readable system-note text for a task activity (actor rendered separately). */
+export function activityText(kind: string, detail: string | null): string {
+  switch (kind) {
+    case "CREATED":
+      return "создал(а) задачу";
+    case "STATUS_CHANGED":
+      return `перенёс(ла): ${detail ?? ""}`;
+    case "ASSIGNED":
+      return `назначил(а) исполнителя: ${detail ?? ""}`;
+    case "UNASSIGNED":
+      return "убрал(а) исполнителя";
+    case "PRIORITY_CHANGED":
+      return `сменил(а) приоритет: ${detail ?? ""}`;
+    case "DUE_CHANGED":
+      return `поставил(а) дедлайн: ${detail ?? ""}`;
+    case "DUE_CLEARED":
+      return "убрал(а) дедлайн";
+    case "TITLE_CHANGED":
+      return "изменил(а) название";
+    case "DESCRIPTION_CHANGED":
+      return "изменил(а) описание";
+    case "TAG_ADDED":
+      return `добавил(а) тег «${detail ?? ""}»`;
+    case "TAG_REMOVED":
+      return `убрал(а) тег «${detail ?? ""}»`;
+    case "ATTACHMENT_ADDED":
+      return `прикрепил(а) файл: ${detail ?? ""}`;
+    default:
+      return "изменил(а) задачу";
+  }
+}
+
 export function relativeUpdated(date: Date | null): string {
   if (!date) return "ещё нет задач";
   const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);

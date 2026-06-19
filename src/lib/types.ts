@@ -46,6 +46,20 @@ export type BoardSummary = {
 /** A board as shown in the header switcher dropdown. */
 export type BoardOption = { id: string; name: string; color: string };
 
+/** A task row on the "Мои задачи" screen. */
+export type MyTaskRow = {
+  id: string;
+  title: string;
+  priority: Priority;
+  dueDate: string | null;
+  overdue: boolean;
+  boardId: string;
+  boardName: string;
+  boardColor: string;
+  columnName: string;
+  done: boolean;
+};
+
 export type UserRef = { id: string; name: string };
 
 export type CommentData = {
@@ -66,6 +80,14 @@ export type AttachmentData = {
 
 export type ChecklistItemData = { id: string; text: string; done: boolean };
 
+export type ActivityData = {
+  id: string;
+  kind: string;
+  detail: string | null;
+  createdAt: string;
+  actor: UserRef;
+};
+
 export type TaskDetailData = {
   id: string;
   title: string;
@@ -83,6 +105,7 @@ export type TaskDetailData = {
   attachments: AttachmentData[];
   tags: TagData[];
   checklist: ChecklistItemData[];
+  activities: ActivityData[];
 };
 
 export type TeamUser = {

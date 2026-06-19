@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordActivity } from "@/lib/activity";
 import { can, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -26,6 +27,7 @@ export async function createTask(input: { columnId: string; title: string }) {
       position: count,
     },
   });
+  await recordActivity(task.id, user.id, "CREATED");
 
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const, id: task.id };

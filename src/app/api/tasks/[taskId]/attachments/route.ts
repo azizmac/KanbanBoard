@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
+import { recordActivity } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveFile } from "@/lib/storage";
@@ -44,6 +45,7 @@ export async function POST(
       uploaderId: user.id,
     },
   });
+  await recordActivity(taskId, user.id, "ATTACHMENT_ADDED", att.filename);
 
   return NextResponse.json({
     ok: true,

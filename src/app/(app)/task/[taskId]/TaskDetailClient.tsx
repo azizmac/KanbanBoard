@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
 import { MentionTextarea } from "@/components/MentionTextarea";
 import { priorityChip, priorityDot, priorityLabels } from "@/lib/constants";
+import { activityText } from "@/lib/format";
 import type {
+  ActivityData,
   AttachmentData,
   ColumnOption,
   CommentData,
@@ -16,6 +18,7 @@ import type {
   TeamUser,
 } from "@/lib/types";
 import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
+import { AssigneePicker } from "./AssigneePicker";
 import { Checklist } from "./Checklist";
 import { TaskTags } from "./TaskTags";
 
@@ -113,6 +116,18 @@ export function TaskDetailClient({
   const columnName = columns.find((c) => c.id === columnId)?.name ?? task.column.name;
   const dueOverdue = due ? new Date(due).getTime() < now - 86_400_000 : false;
 
+  // Merge comments + system notes into one chronological feed (GitLab-style).
+  const feed = useMemo(() => {
+    type FeedItem =
+      | { type: "comment"; at: number; comment: CommentData }
+      | { type: "event"; at: number; activity: ActivityData };
+    const items: FeedItem[] = [
+      ...comments.map((c) => ({ type: "comment" as const, at: Date.parse(c.createdAt), comment: c })),
+      ...task.activities.map((a) => ({ type: "event" as const, at: Date.parse(a.createdAt), activity: a })),
+    ];
+    return items.sort((x, y) => x.at - y.at);
+  }, [comments, task.activities]);
+
   function saveTitle() {
     setEditingTitle(false);
     const t = title.trim();
@@ -120,8 +135,9 @@ export function TaskDetailClient({
       setTitle(task.title);
       return;
     }
-    startTransition(() => {
-      void updateTask(task.id, { title: t });
+    startTransition(async () => {
+      await updateTask(task.id, { title: t });
+      router.refresh();
     });
   }
 
@@ -129,31 +145,36 @@ export function TaskDetailClient({
     startTransition(async () => {
       await updateTask(task.id, { description: desc || null });
       setSavedDesc(desc);
+      router.refresh();
     });
   }
 
   function saveColumn(v: string) {
     setColumnId(v);
-    startTransition(() => {
-      void updateTask(task.id, { columnId: v });
+    startTransition(async () => {
+      await updateTask(task.id, { columnId: v });
+      router.refresh();
     });
   }
   function saveAssignee(v: string) {
     setAssigneeId(v);
-    startTransition(() => {
-      void updateTask(task.id, { assigneeId: v || null });
+    startTransition(async () => {
+      await updateTask(task.id, { assigneeId: v || null });
+      router.refresh();
     });
   }
   function savePriority(v: Priority) {
     setPriority(v);
-    startTransition(() => {
-      void updateTask(task.id, { priority: v });
+    startTransition(async () => {
+      await updateTask(task.id, { priority: v });
+      router.refresh();
     });
   }
   function saveDue(v: string) {
     setDue(v);
-    startTransition(() => {
-      void updateTask(task.id, { dueDate: v ? new Date(v).toISOString() : null });
+    startTransition(async () => {
+      await updateTask(task.id, { dueDate: v ? new Date(v).toISOString() : null });
+      router.refresh();
     });
   }
 
@@ -353,28 +374,43 @@ export function TaskDetailClient({
             </button>
           </div>
 
-          {/* Comments */}
+          {/* Activity feed: comments + system notes (history) */}
           <div className="mt-7">
-            <h3 className={sectionLabel}>Комментарии ({comments.length})</h3>
-            <div className="space-y-4">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2.5">
-                  <Avatar name={c.author.name} size={30} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold">{c.author.name}</span>
-                      <span className="font-mono text-xs text-[var(--color-faint)]">
-                        {formatDateTime(c.createdAt)}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-sm leading-relaxed text-[var(--color-body)]">
-                      <RichText text={c.body} team={team} />
+            <h3 className={sectionLabel}>Активность</h3>
+            <div className="space-y-3">
+              {feed.map((item) =>
+                item.type === "comment" ? (
+                  <div key={item.comment.id} className="flex gap-2.5">
+                    <Avatar name={item.comment.author.name} size={30} />
+                    <div className="min-w-0 flex-1 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3 py-2">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-semibold">{item.comment.author.name}</span>
+                        <span className="font-mono text-xs text-[var(--color-faint)]">
+                          {formatDateTime(item.comment.createdAt)}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-sm leading-relaxed text-[var(--color-body)]">
+                        <RichText text={item.comment.body} team={team} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {comments.length === 0 && (
-                <p className="text-sm text-[var(--color-muted)]">Пока нет комментариев.</p>
+                ) : (
+                  <div key={item.activity.id} className="flex items-center gap-2.5 pl-1">
+                    <span className="grid h-[30px] w-[30px] shrink-0 place-items-center">
+                      <span className="h-2 w-2 rounded-full bg-[var(--color-faint)]" />
+                    </span>
+                    <p className="text-[13px] text-[var(--color-muted)]">
+                      <span className="font-medium text-[var(--color-body)]">{item.activity.actor.name}</span>{" "}
+                      {activityText(item.activity.kind, item.activity.detail)}
+                      <span className="ml-2 font-mono text-[11px] text-[var(--color-faint)]">
+                        {formatDateTime(item.activity.createdAt)}
+                      </span>
+                    </p>
+                  </div>
+                ),
+              )}
+              {feed.length === 0 && (
+                <p className="text-sm text-[var(--color-muted)]">Пока нет активности.</p>
               )}
             </div>
 
@@ -416,14 +452,7 @@ export function TaskDetailClient({
 
           <div>
             <label className={labelClass}>Исполнитель</label>
-            <select className={fieldClass} value={assigneeId} onChange={(e) => saveAssignee(e.target.value)}>
-              <option value="">— не назначен —</option>
-              {team.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+            <AssigneePicker team={team} value={assigneeId} onChange={saveAssignee} />
           </div>
 
           <div>
