@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { LogoLockup } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/auth";
 import { roleLabels, telegramEnabled } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
@@ -11,21 +12,6 @@ const ERRORS: Record<string, string> = {
   notlinked: "Ваш Telegram не привязан к команде — обратитесь к администратору.",
   disabled: "Аккаунт отключён.",
 };
-
-function Logo({ on = "dark" }: { on?: "dark" | "light" }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-[var(--color-accent)]">
-        <span className="h-3.5 w-3.5 rounded-[4px] border-[2.5px] border-white" />
-      </span>
-      <span
-        className={`text-[18px] font-bold tracking-[-0.02em] ${on === "dark" ? "text-white" : "text-[var(--color-ink)]"}`}
-      >
-        Поток
-      </span>
-    </div>
-  );
-}
 
 function TelegramIcon() {
   return (
@@ -72,7 +58,7 @@ export default async function LoginPage({
           style={{ background: "radial-gradient(circle, var(--color-accent), transparent 70%)" }}
         />
         <div className="relative">
-          <Logo on="dark" />
+          <LogoLockup tone="dark" size={30} />
         </div>
         <div className="relative mt-10 md:mt-0">
           <h2 className="max-w-[420px] text-[28px] font-bold leading-[1.15] tracking-[-0.03em] text-white md:text-[32px]">
@@ -96,7 +82,7 @@ export default async function LoginPage({
       {/* Form panel */}
       <div className="flex flex-col justify-center bg-[var(--color-surface)] px-7 py-10 md:px-12">
         <div className="mx-auto w-full max-w-[400px]">
-          <Logo on="light" />
+          <LogoLockup tone="light" size={30} />
           <h1 className="mt-7 text-[26px] font-bold tracking-[-0.03em]">Вход в Поток</h1>
           <p className="mt-2 text-[14.5px] leading-relaxed text-[var(--color-muted)]">
             Используйте свой Telegram-аккаунт — никаких паролей. Мы получим только имя и аватар.
