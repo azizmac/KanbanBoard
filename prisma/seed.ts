@@ -9,6 +9,8 @@ function daysFromNow(n: number) {
   return new Date(Date.now() + n * 24 * 60 * 60 * 1000);
 }
 
+const COLUMNS = ["Бэклог", "В работе", "На ревью", "Готово"];
+
 async function main() {
   if (process.env.NODE_ENV === "production") {
     throw new Error(
@@ -22,7 +24,9 @@ async function main() {
   await prisma.mention.deleteMany();
   await prisma.attachment.deleteMany();
   await prisma.comment.deleteMany();
+  await prisma.checklistItem.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.column.deleteMany();
   await prisma.board.deleteMany();
   await prisma.session.deleteMany();
@@ -52,80 +56,101 @@ async function main() {
   const members = [];
   for (const [name, username, position, managerId] of memberSpecs) {
     members.push(
-      await prisma.user.create({
-        data: { name, username, position, role: "MEMBER", managerId },
-      }),
+      await prisma.user.create({ data: { name, username, position, role: "MEMBER", managerId } }),
     );
   }
   const [igor, maria, pavel, sergey, alexey, olga, natalia] = members;
 
-  console.log("Creating board & columns…");
-  const board = await prisma.board.create({
+  async function makeBoard(name: string, color: string) {
+    const board = await prisma.board.create({
+      data: { name, color, columns: { create: COLUMNS.map((n, position) => ({ name: n, position })) } },
+      include: { columns: { orderBy: { position: "asc" } } },
+    });
+    const [backlog, inProgress, review, done] = board.columns;
+    return { board, backlog, inProgress, review, done };
+  }
+
+  console.log("Creating boards…");
+  const dev = await makeBoard("Разработка платформы", "iris");
+
+  // tags for the dev board
+  const tPay = await prisma.tag.create({ data: { name: "Платежи", color: "pink", boardId: dev.board.id } });
+  const tDesign = await prisma.tag.create({ data: { name: "Дизайн", color: "amber", boardId: dev.board.id } });
+  const tApi = await prisma.tag.create({ data: { name: "API", color: "blue", boardId: dev.board.id } });
+
+  const payTask = await prisma.task.create({
     data: {
-      name: "Главная доска",
-      columns: {
+      title: "Интеграция платёжного шлюза ЮKassa",
+      description: "Подключить приём платежей и вебхуки. Согласовать с @dmitry лимиты.",
+      columnId: dev.inProgress.id, position: 0, creatorId: dmitry.id, assigneeId: sergey.id,
+      priority: "URGENT", dueDate: daysFromNow(1), tags: { connect: [{ id: tPay.id }] },
+      checklist: {
         create: [
-          { name: "Бэклог", position: 0 },
-          { name: "В работе", position: 1 },
-          { name: "На проверке", position: 2 },
-          { name: "Готово", position: 3 },
+          { text: "Завести тестовый аккаунт ЮKassa", done: true, position: 0 },
+          { text: "Реализовать создание платежа", done: true, position: 1 },
+          { text: "Обработка вебхуков статуса", done: false, position: 2 },
+          { text: "Покрыть тестами", done: false, position: 3 },
         ],
       },
     },
-    include: { columns: { orderBy: { position: "asc" } } },
   });
-  const [backlog, inProgress, review, done] = board.columns;
+  void payTask;
 
-  console.log("Creating sample tasks…");
-  const tasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
+  const devTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
     {
-      title: "Сверстать страницу логина",
-      description: "Минималистичный экран входа через Telegram.",
-      columnId: backlog.id, position: 0, creatorId: elena.id, assigneeId: maria.id,
-      priority: "NORMAL", dueDate: daysFromNow(5),
+      title: "Email-рассылка по реактивации спящих клиентов",
+      columnId: dev.backlog.id, position: 0, creatorId: elena.id, assigneeId: natalia.id, priority: "LOW",
     },
     {
-      title: "Настроить CI/CD пайплайн",
-      description: "Автодеплой на staging при пуше в main.",
-      columnId: backlog.id, position: 1, creatorId: dmitry.id, assigneeId: alexey.id,
-      priority: "LOW",
+      title: "Push-уведомления в мобильном приложении",
+      columnId: dev.backlog.id, position: 1, creatorId: dmitry.id, assigneeId: igor.id, priority: "NORMAL",
+      tags: { connect: [{ id: tApi.id }] },
     },
     {
-      title: "API для задач (CRUD)",
-      description: "Эндпоинты создания, обновления и перемещения задач.",
-      columnId: inProgress.id, position: 0, creatorId: dmitry.id, assigneeId: igor.id,
+      title: "Редизайн страницы оформления заказа",
+      columnId: dev.inProgress.id, position: 1, creatorId: elena.id, assigneeId: olga.id,
+      priority: "HIGH", dueDate: daysFromNow(4), tags: { connect: [{ id: tDesign.id }] },
+    },
+    {
+      title: "Сценарии автотестов для корзины",
+      columnId: dev.inProgress.id, position: 2, creatorId: pavel.id, assigneeId: pavel.id,
       priority: "HIGH", dueDate: daysFromNow(2),
     },
     {
-      title: "Дизайн канбан-доски",
-      description: "Колонки, карточки, состояния перетаскивания.",
-      columnId: inProgress.id, position: 1, creatorId: elena.id, assigneeId: olga.id,
-      priority: "NORMAL",
+      title: "API для задач (CRUD)",
+      columnId: dev.review.id, position: 0, creatorId: dmitry.id, assigneeId: igor.id,
+      priority: "NORMAL", tags: { connect: [{ id: tApi.id }] },
     },
     {
-      title: "Push-уведомления в Telegram",
-      description: "Уведомлять об упоминаниях и назначениях.",
-      columnId: review.id, position: 0, creatorId: dmitry.id, assigneeId: sergey.id,
-      priority: "URGENT", dueDate: daysFromNow(1),
+      title: "Настроить CI/CD пайплайн",
+      columnId: dev.done.id, position: 0, creatorId: dmitry.id, assigneeId: alexey.id, priority: "LOW",
     },
     {
-      title: "Тест-кейсы для авторизации",
-      columnId: review.id, position: 1, creatorId: pavel.id, assigneeId: pavel.id,
-      priority: "NORMAL",
-    },
-    {
-      title: "Лендинг и анонс продукта",
-      description: "Подготовить маркетинговую страницу к релизу.",
-      columnId: done.id, position: 0, creatorId: elena.id, assigneeId: natalia.id,
-      priority: "LOW",
+      title: "Сверстать экран входа через Telegram",
+      columnId: dev.done.id, position: 1, creatorId: elena.id, assigneeId: maria.id, priority: "NORMAL",
     },
   ];
+  for (const data of devTasks) await prisma.task.create({ data });
 
-  for (const data of tasks) {
-    await prisma.task.create({ data });
-  }
+  // Second board — Marketing
+  const mkt = await makeBoard("Маркетинг Q3", "pink");
+  const mktTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
+    { title: "Контент-план на сентябрь", columnId: mkt.backlog.id, position: 0, creatorId: elena.id, assigneeId: natalia.id, priority: "NORMAL" },
+    { title: "Запуск рекламной кампании", columnId: mkt.inProgress.id, position: 0, creatorId: natalia.id, assigneeId: natalia.id, priority: "HIGH", dueDate: daysFromNow(3) },
+    { title: "Бриф для дизайнера баннеров", columnId: mkt.done.id, position: 0, creatorId: elena.id, assigneeId: olga.id, priority: "LOW" },
+  ];
+  for (const data of mktTasks) await prisma.task.create({ data });
 
-  console.log(`✅ Seed done: ${3 + members.length} users, 1 board, ${tasks.length} tasks.`);
+  // Third board — Support
+  const sup = await makeBoard("Поддержка клиентов", "green");
+  const supTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
+    { title: "База знаний: топ-20 вопросов", columnId: sup.inProgress.id, position: 0, creatorId: elena.id, assigneeId: pavel.id, priority: "NORMAL" },
+    { title: "Шаблоны ответов в поддержке", columnId: sup.done.id, position: 0, creatorId: anna.id, assigneeId: maria.id, priority: "LOW" },
+  ];
+  for (const data of supTasks) await prisma.task.create({ data });
+
+  const boardCount = 3;
+  console.log(`✅ Seed done: ${3 + members.length} users, ${boardCount} boards.`);
 }
 
 main()

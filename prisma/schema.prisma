@@ -64,8 +64,10 @@ model Session {
 model Board {
   id        String   @id @default(cuid())
   name      String
+  color     String   @default("iris") // tint key for the board badge (see lib/tints)
   createdAt DateTime @default(now())
   columns   Column[]
+  tags      Tag[]
 }
 
 model Column {
@@ -109,9 +111,35 @@ model Task {
   comments    Comment[]
   attachments Attachment[]
   mentions    Mention[]
+  tags        Tag[]
+  checklist   ChecklistItem[]
 
   @@index([columnId])
   @@index([assigneeId])
+}
+
+// Coloured label attached to tasks; scoped to a board.
+model Tag {
+  id      String @id @default(cuid())
+  name    String
+  color   String @default("gray") // tint key (see lib/tints)
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([boardId])
+}
+
+// A single checklist row inside a task.
+model ChecklistItem {
+  id       String  @id @default(cuid())
+  text     String
+  done     Boolean @default(false)
+  position Int
+  taskId   String
+  task     Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }
 
 model Comment {

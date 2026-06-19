@@ -74,12 +74,14 @@ export function TaskDetailClient({
   columns,
   currentUser,
   canDelete,
+  now,
 }: {
   task: TaskDetailData;
   team: TeamUser[];
   columns: ColumnOption[];
   currentUser: { id: string; name: string };
   canDelete: boolean;
+  now: number;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -104,7 +106,7 @@ export function TaskDetailClient({
   const [error, setError] = useState<string | null>(null);
 
   const columnName = columns.find((c) => c.id === columnId)?.name ?? task.column.name;
-  const dueOverdue = due ? new Date(due).getTime() < Date.now() - 86_400_000 : false;
+  const dueOverdue = due ? new Date(due).getTime() < now - 86_400_000 : false;
 
   function saveTitle() {
     setEditingTitle(false);

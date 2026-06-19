@@ -2,14 +2,18 @@ import type { Priority } from "@/generated/prisma/client";
 
 export type { Priority };
 
+export type TagData = { id: string; name: string; color: string };
+
 export type TaskCard = {
   id: string;
   title: string;
   priority: Priority;
   dueDate: string | null;
+  overdue: boolean;
   assignee: { id: string; name: string } | null;
   commentCount: number;
   attachmentCount: number;
+  tags: TagData[];
 };
 
 export type ColumnData = {
@@ -21,8 +25,26 @@ export type ColumnData = {
 export type BoardData = {
   id: string;
   name: string;
+  color: string;
   columns: ColumnData[];
 };
+
+/** A board as shown on the "Все доски" overview grid. */
+export type BoardSummary = {
+  id: string;
+  name: string;
+  color: string;
+  taskCount: number;
+  // segment widths (0..1) for the progress bar
+  doneRatio: number;
+  reviewRatio: number;
+  progressRatio: number;
+  memberNames: string[];
+  updatedLabel: string;
+};
+
+/** A board as shown in the header switcher dropdown. */
+export type BoardOption = { id: string; name: string; color: string };
 
 export type UserRef = { id: string; name: string };
 
@@ -42,6 +64,8 @@ export type AttachmentData = {
   uploader: UserRef;
 };
 
+export type ChecklistItemData = { id: string; text: string; done: boolean };
+
 export type TaskDetailData = {
   id: string;
   title: string;
@@ -50,12 +74,15 @@ export type TaskDetailData = {
   dueDate: string | null;
   columnId: string;
   column: { id: string; name: string };
+  board: { id: string; name: string; color: string };
   creator: UserRef;
   assignee: UserRef | null;
   createdAt: string;
   updatedAt: string;
   comments: CommentData[];
   attachments: AttachmentData[];
+  tags: TagData[];
+  checklist: ChecklistItemData[];
 };
 
 export type TeamUser = {

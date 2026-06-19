@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 function IconBoard() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M9 3v18M15 3v18" />
+      <rect x="3" y="3" width="7" height="18" rx="1.5" />
+      <rect x="14" y="3" width="7" height="11" rx="1.5" />
     </svg>
   );
 }
@@ -39,16 +39,16 @@ function IconProfile() {
 export function MobileTabBar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const items = [
-    { href: "/board", label: "Доска", icon: <IconBoard /> },
-    { href: "/team", label: "Команда", icon: <IconTeam /> },
-    ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin /> }] : []),
-    { href: "/profile", label: "Профиль", icon: <IconProfile /> },
+    { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
+    { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
+    ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }] : []),
+    { href: "/profile", label: "Профиль", icon: <IconProfile />, match: ["/profile"] },
   ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[72px] items-stretch border-t border-[var(--color-line)] bg-[var(--color-surface)] pb-[env(safe-area-inset-bottom)] md:hidden">
       {items.map((it) => {
-        const active = pathname === it.href || pathname.startsWith(it.href + "/");
+        const active = it.match.some((m) => pathname === m || pathname.startsWith(m + "/"));
         return (
           <Link
             key={it.href}

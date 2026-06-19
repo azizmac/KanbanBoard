@@ -7,8 +7,8 @@ import { Avatar } from "./Avatar";
 function IconBoard() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M9 3v18M15 3v18" />
+      <rect x="3" y="3" width="7" height="18" rx="1.5" />
+      <rect x="14" y="3" width="7" height="11" rx="1.5" />
     </svg>
   );
 }
@@ -33,9 +33,9 @@ export function Sidebar({ name, isAdmin }: { name: string; isAdmin: boolean }) {
   const pathname = usePathname();
 
   const items = [
-    { href: "/board", label: "Доска", icon: <IconBoard /> },
-    { href: "/team", label: "Команда", icon: <IconTeam /> },
-    ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin /> }] : []),
+    { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
+    { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
+    ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }] : []),
   ];
 
   const profileActive = pathname.startsWith("/profile");
@@ -50,7 +50,7 @@ export function Sidebar({ name, isAdmin }: { name: string; isAdmin: boolean }) {
       </Link>
 
       {items.map((it) => {
-        const active = pathname === it.href || pathname.startsWith(it.href + "/");
+        const active = it.match.some((m) => pathname === m || pathname.startsWith(m + "/"));
         return (
           <Link
             key={it.href}

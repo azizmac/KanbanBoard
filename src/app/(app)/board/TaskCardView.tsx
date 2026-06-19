@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { priorityChip, priorityDot, priorityLabels } from "@/lib/constants";
+import { tint } from "@/lib/tints";
 import type { TaskCard } from "@/lib/types";
 
 function formatDate(d: Date) {
@@ -47,7 +48,7 @@ export function TaskCardContent({
   done?: boolean;
 }) {
   const due = task.dueDate ? new Date(task.dueDate) : null;
-  const overdue = due ? due.getTime() < Date.now() : false;
+  const overdue = task.overdue;
 
   return (
     <div
@@ -60,7 +61,7 @@ export function TaskCardContent({
       {task.priority === "URGENT" && <div className="h-[3px] bg-[var(--color-urgent-dot)]" />}
 
       <div className="p-3.5">
-        <div className="mb-2 flex items-center gap-1.5">
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
           {done && <CheckCircle />}
           <span
             className={`inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold ${priorityChip[task.priority]}`}
@@ -68,6 +69,18 @@ export function TaskCardContent({
             <span className={`h-1.5 w-1.5 rounded-full ${priorityDot[task.priority]}`} />
             {priorityLabels[task.priority]}
           </span>
+          {task.tags.slice(0, 2).map((tg) => {
+            const c = tint(tg.color);
+            return (
+              <span
+                key={tg.id}
+                className="rounded-[6px] px-2 py-[3px] text-[11px] font-medium"
+                style={{ background: c.bg, color: c.text }}
+              >
+                {tg.name}
+              </span>
+            );
+          })}
         </div>
 
         <p

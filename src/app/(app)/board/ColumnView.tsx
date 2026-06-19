@@ -16,14 +16,18 @@ function columnDot(name: string) {
 export function ColumnView({
   column,
   onAddTask,
+  adding,
+  onAddingChange,
 }: {
   column: ColumnData;
   onAddTask: (columnId: string, title: string) => void;
+  adding: boolean;
+  onAddingChange: (open: boolean) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
-  const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const done = column.name.includes("Готово");
+  const setAdding = onAddingChange;
 
   function submit() {
     const t = title.trim();
@@ -36,13 +40,13 @@ export function ColumnView({
   }
 
   return (
-    <div className="flex w-[86vw] shrink-0 flex-col sm:w-[286px]">
+    <div className="flex w-full flex-col">
       <header className="flex items-center gap-2 px-1.5 py-2">
         <span className={`h-2 w-2 shrink-0 rounded-full ${columnDot(column.name)}`} />
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">{column.name}</h2>
         <span className="font-mono text-xs text-[var(--color-faint)]">{column.tasks.length}</span>
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => setAdding(!adding)}
           className="ml-auto grid h-6 w-6 place-items-center rounded-md text-[var(--color-faint)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
           title="Добавить задачу"
         >

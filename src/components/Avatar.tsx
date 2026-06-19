@@ -1,19 +1,4 @@
-const palette = [
-  "bg-rose-500",
-  "bg-amber-500",
-  "bg-emerald-500",
-  "bg-sky-500",
-  "bg-indigo-500",
-  "bg-fuchsia-500",
-  "bg-teal-500",
-  "bg-orange-500",
-];
-
-function hash(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
+import { avatarTint } from "@/lib/tints";
 
 function initials(name: string) {
   return name
@@ -29,20 +14,70 @@ export function Avatar({
   size = 32,
   className = "",
   title,
+  ring = false,
 }: {
   name: string;
   size?: number;
   className?: string;
   title?: string;
+  /** white 2px ring, for overlapping stacks */
+  ring?: boolean;
 }) {
-  const color = palette[hash(name) % palette.length];
+  const { bg, text } = avatarTint(name);
   return (
     <span
-      className={`${color} inline-grid shrink-0 place-items-center rounded-full font-medium text-white ${className}`}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
+      className={`inline-grid shrink-0 place-items-center rounded-full font-semibold ${className}`}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.4),
+        background: bg,
+        color: text,
+        boxShadow: ring ? "0 0 0 2px var(--color-surface)" : undefined,
+      }}
       title={title ?? name}
     >
       {initials(name)}
     </span>
+  );
+}
+
+/** Overlapping row of avatars with a "+N" overflow chip. */
+export function AvatarStack({
+  names,
+  size = 24,
+  max = 3,
+}: {
+  names: string[];
+  size?: number;
+  max?: number;
+}) {
+  const shown = names.slice(0, max);
+  const extra = names.length - shown.length;
+  const overlap = Math.round(size * 0.3);
+  return (
+    <div className="flex">
+      {shown.map((n, i) => (
+        <span key={`${n}-${i}`} style={{ marginLeft: i === 0 ? 0 : -overlap }}>
+          <Avatar name={n} size={size} ring />
+        </span>
+      ))}
+      {extra > 0 && (
+        <span
+          className="inline-grid place-items-center rounded-full font-semibold"
+          style={{
+            width: size,
+            height: size,
+            marginLeft: -overlap,
+            fontSize: Math.round(size * 0.38),
+            background: "#F2F4F7",
+            color: "#667085",
+            boxShadow: "0 0 0 2px var(--color-surface)",
+          }}
+        >
+          +{extra}
+        </span>
+      )}
+    </div>
   );
 }

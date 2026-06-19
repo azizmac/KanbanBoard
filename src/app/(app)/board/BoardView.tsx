@@ -15,18 +15,33 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useRef, useState, useTransition } from "react";
-import type { BoardData, ColumnData, TaskCard } from "@/lib/types";
+import { AvatarStack } from "@/components/Avatar";
+import { pluralTasks } from "@/lib/format";
+import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
+import { BoardSwitcher } from "./BoardSwitcher";
 import { ColumnView } from "./ColumnView";
 import { TaskCardContent } from "./TaskCardView";
 import { createTask, moveTask } from "./actions";
 
-export function BoardView({ board }: { board: BoardData }) {
+export function BoardView({
+  board,
+  boards,
+  memberNames,
+  canCreate,
+}: {
+  board: BoardData;
+  boards: BoardOption[];
+  memberNames: string[];
+  canCreate: boolean;
+}) {
   const [columns, setColumns] = useState<ColumnData[]>(board.columns);
   const columnsRef = useRef<ColumnData[]>(board.columns);
   const [activeTask, setActiveTask] = useState<TaskCard | null>(null);
+  const [addingColumnId, setAddingColumnId] = useState<string | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string>(board.columns[0]?.id ?? "");
+  const [query, setQuery] = useState("");
   const [, startTransition] = useTransition();
 
-  // setColumns wrapper that keeps a synchronous ref in sync for drag math.
   function setCols(updater: (prev: ColumnData[]) => ColumnData[]) {
     setColumns((prev) => {
       const next = updater(prev);
@@ -36,9 +51,7 @@ export function BoardView({ board }: { board: BoardData }) {
   }
 
   const sensors = useSensors(
-    // Desktop: start dragging after a small move.
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    // Touch: long-press to drag, so normal taps and scrolling still work.
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
@@ -59,7 +72,6 @@ export function BoardView({ board }: { board: BoardData }) {
     }
   }
 
-  // Move a card between columns live while dragging.
   function handleDragOver(e: DragOverEvent) {
     const { active, over } = e;
     if (!over) return;
@@ -120,7 +132,7 @@ export function BoardView({ board }: { board: BoardData }) {
     setCols((prev) => prev.map((c) => (c.id === colId ? { ...c, tasks: reordered } : c)));
 
     const orderedIds = reordered.map((t) => t.id);
-    if (orderedIds.some((id) => id.startsWith("temp-"))) return; // wait until persisted
+    if (orderedIds.some((id) => id.startsWith("temp-"))) return;
     startTransition(() => {
       void moveTask({ taskId: activeId, toColumnId: colId, orderedIds });
     });
@@ -133,9 +145,11 @@ export function BoardView({ board }: { board: BoardData }) {
       title,
       priority: "NORMAL",
       dueDate: null,
+      overdue: false,
       assignee: null,
       commentCount: 0,
       attachmentCount: 0,
+      tags: [],
     };
     setCols((prev) =>
       prev.map((c) => (c.id === columnId ? { ...c, tasks: [...c.tasks, optimistic] } : c)),
@@ -159,31 +173,132 @@ export function BoardView({ board }: { board: BoardData }) {
     }
   }
 
-  return (
-    <div className="pb-4">
-      <DndContext
-        id="kanban-board"
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={() => setActiveTask(null)}
-      >
-        <div className="flex gap-4 overflow-x-auto px-1 pb-2">
-          {columns.map((column) => (
-            <ColumnView key={column.id} column={column} onAddTask={handleAddTask} />
-          ))}
-        </div>
+  const q = query.trim().toLowerCase();
+  const view = q
+    ? columns.map((c) => ({ ...c, tasks: c.tasks.filter((t) => t.title.toLowerCase().includes(q)) }))
+    : columns;
 
-        <DragOverlay>
-          {activeTask ? (
-            <div className="w-[286px] rotate-1">
-              <TaskCardContent task={activeTask} dragging />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+  const total = columns.reduce((n, c) => n + c.tasks.length, 0);
+  const inProgress = columns.find((c) => c.name.includes("работе"))?.tasks.length ?? 0;
+
+  function newTask() {
+    const target = activeColumnId || columns[0]?.id;
+    if (target) setAddingColumnId(target);
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      {/* ---- Desktop top bar ---- */}
+      <div className="sticky top-0 z-20 hidden h-[62px] shrink-0 items-center gap-4 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 sm:flex">
+        <BoardSwitcher current={board} boards={boards} canCreate={canCreate} />
+        <div className="hidden h-[22px] w-px bg-[var(--color-line)] lg:block" />
+        <span className="hidden whitespace-nowrap text-[13px] text-[var(--color-muted)] lg:inline">
+          {pluralTasks(total)} · {inProgress} в работе
+        </span>
+
+        <div className="ml-auto flex items-center gap-3">
+          {memberNames.length > 0 && (
+            <span className="hidden md:inline">
+              <AvatarStack names={memberNames} size={30} max={4} />
+            </span>
+          )}
+          <div className="relative">
+            <svg
+              width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="2"
+              className="pointer-events-none absolute left-2.5 top-[9.5px]"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4-4" />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск"
+              className="h-9 w-[180px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] pl-8 pr-3 text-[13px] outline-none focus:border-[var(--color-accent)]"
+            />
+          </div>
+          <button
+            onClick={newTask}
+            className="flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Задача
+          </button>
+        </div>
+      </div>
+
+      {/* ---- Mobile header + column pills ---- */}
+      <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 pt-3 pb-2.5 sm:hidden">
+        <BoardSwitcher current={board} boards={boards} canCreate={canCreate} />
+        <div className="scroll-thin -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
+          {columns.map((c) => {
+            const on = c.id === activeColumnId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setActiveColumnId(c.id)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
+                  on
+                    ? "bg-[var(--color-sidebar)] text-white"
+                    : "bg-[#F2F1ED] text-[var(--color-muted)]"
+                }`}
+              >
+                {c.name} · {c.tasks.length}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ---- Columns ---- */}
+      <div className="relative min-h-0 flex-1">
+        <DndContext
+          id="kanban-board"
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveTask(null)}
+        >
+          <div className="scroll-thin flex gap-4 overflow-x-auto px-4 py-5 sm:px-6">
+            {view.map((column) => (
+              <div
+                key={column.id}
+                className={`${column.id === activeColumnId ? "flex" : "hidden"} w-full shrink-0 sm:flex sm:w-[286px]`}
+              >
+                <ColumnView
+                  column={column}
+                  onAddTask={handleAddTask}
+                  adding={addingColumnId === column.id}
+                  onAddingChange={(open) => setAddingColumnId(open ? column.id : null)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <DragOverlay>
+            {activeTask ? (
+              <div className="w-[286px] rotate-1">
+                <TaskCardContent task={activeTask} dragging />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+
+        {/* Mobile FAB */}
+        <button
+          onClick={newTask}
+          className="fixed bottom-[88px] right-[18px] z-20 grid h-[52px] w-[52px] place-items-center rounded-[16px] bg-[var(--color-accent)] text-white shadow-[0_6px_16px_rgba(85,70,224,0.4)] sm:hidden"
+          aria-label="Новая задача"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
