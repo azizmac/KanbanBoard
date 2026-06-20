@@ -127,13 +127,21 @@ export function createBot() {
   // plain fetch works fine). Route every API call through plain fetch.
   if (apiRoot) {
     bot.api.config.use(async (_prev, method, payload, signal) => {
-      const res = await fetch(`${apiRoot}/bot${token}/${method}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload ?? {}),
-        signal: signal as AbortSignal | null | undefined,
-      });
-      return (await res.json()) as Awaited<ReturnType<typeof _prev>>;
+      // Hard per-request timeout so a stalled relay call can't freeze the bot.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 45_000);
+      (signal as AbortSignal | undefined)?.addEventListener?.("abort", () => ctrl.abort());
+      try {
+        const res = await fetch(`${apiRoot}/bot${token}/${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload ?? {}),
+          signal: ctrl.signal,
+        });
+        return (await res.json()) as Awaited<ReturnType<typeof _prev>>;
+      } finally {
+        clearTimeout(timer);
+      }
     });
   }
 

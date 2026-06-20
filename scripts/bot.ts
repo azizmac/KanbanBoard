@@ -1,8 +1,9 @@
-// Telegram bot worker. Neither long-polling nor webhooks work from the RU mini-PC:
-//   - long getUpdates can't be held open through the Cloudflare relay;
-//   - Telegram/Cloudflare can't reach the RU origin for a webhook (inbound block).
-// So we SHORT-poll: getUpdates({timeout:0}) through the relay (each call returns
-// instantly) in a loop, with a small idle delay. Plus the daily reminder digest.
+// Telegram bot worker. A webhook can't be used from the RU mini-PC (Telegram /
+// Cloudflare can't reach the origin), so we poll getUpdates through the relay.
+// LONG-poll (timeout=25): the call returns the instant a message arrives, so
+// replies are immediate; when idle it parks ~25s, keeping request volume low
+// (Cloudflare free tier). A hard 45s per-request abort lives in createBot() so a
+// stalled relay call can never freeze the loop. Plus the daily reminder digest.
 import "dotenv/config";
 import { BOT_COMMANDS, createBot, myTasksMessage } from "../src/lib/bot";
 import { prisma } from "../src/lib/prisma";
@@ -59,16 +60,17 @@ async function pollLoop() {
   const api = bot!.api;
   let offset = 0;
   for (;;) {
+    const started = Date.now();
     let updates: Awaited<ReturnType<typeof api.getUpdates>> = [];
     try {
       updates = await api.getUpdates({
         offset,
-        timeout: 0,
+        timeout: 25,
         allowed_updates: ["message", "my_chat_member"],
       });
     } catch (e) {
       console.error("[poll]", e instanceof Error ? e.message : e);
-      await sleep(3000);
+      await sleep(2000);
       continue;
     }
     for (const u of updates) {
@@ -79,7 +81,9 @@ async function pollLoop() {
         console.error("[handle]", e);
       }
     }
-    if (updates.length === 0) await sleep(1500);
+    // If the relay can't hold the long-poll and returns instantly+empty, back
+    // off so we don't spin and burn through the relay's request quota.
+    if (updates.length === 0 && Date.now() - started < 2000) await sleep(2000);
   }
 }
 
@@ -88,7 +92,7 @@ async function main() {
   await bot!.init().catch((e) => console.error("[bot] init", e));
   await bot!.api.setMyCommands(BOT_COMMANDS).catch((e) => console.error("[bot] setMyCommands", e));
   startReminderLoop();
-  console.log("[bot] short-polling via relay…");
+  console.log("[bot] long-polling (timeout=25) via relay…");
   await pollLoop();
 }
 
