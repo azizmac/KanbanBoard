@@ -118,7 +118,7 @@ export function TaskCardContent({
             )}
             {task.assignee && (
               <span className="ml-auto">
-                <Avatar name={task.assignee.name} size={24} />
+                <Avatar name={task.assignee.name} src={task.assignee.avatarUrl} size={24} />
               </span>
             )}
           </div>

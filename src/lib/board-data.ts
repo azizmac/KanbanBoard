@@ -16,7 +16,7 @@ function isProgress(name: string) {
 const cardTaskInclude = {
   orderBy: { position: "asc" },
   include: {
-    assignee: { select: { id: true, name: true } },
+    assignee: { select: { id: true, name: true, avatarUrl: true } },
     tags: { select: { id: true, name: true, color: true } },
     _count: { select: { comments: true, attachments: true } },
   },
@@ -27,7 +27,7 @@ function toCard(t: {
   title: string;
   priority: TaskCard["priority"];
   dueDate: Date | null;
-  assignee: { id: string; name: string } | null;
+  assignee: { id: string; name: string; avatarUrl: string | null } | null;
   tags: { id: string; name: string; color: string }[];
   _count: { comments: number; attachments: number };
 }): TaskCard {

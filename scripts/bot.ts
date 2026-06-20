@@ -8,6 +8,7 @@ import "dotenv/config";
 import { BOT_COMMANDS, buildTaskListView, createBot } from "../src/lib/bot";
 import { prisma } from "../src/lib/prisma";
 import { instantiateTemplate } from "../src/lib/templates";
+import { syncAvatar } from "../src/lib/tg-avatar";
 
 const bot = createBot();
 if (!bot) {
@@ -178,6 +179,27 @@ function startRecurringLoop() {
   setInterval(() => void runDueTemplates().catch((e) => console.error("[recurring]", e)), 15 * 60 * 1000);
 }
 
+// ---- Telegram avatar sync -------------------------------------------------
+/** Pull Telegram profile photos into MinIO. onlyMissing=true skips users who
+ *  already have an avatar (startup), false refreshes everyone (daily). */
+async function refreshAvatars(onlyMissing: boolean) {
+  const users = await prisma.user.findMany({
+    where: { active: true, telegramId: { not: null }, ...(onlyMissing ? { avatarUrl: null } : {}) },
+    select: { id: true },
+  });
+  let n = 0;
+  for (const u of users) {
+    if (await syncAvatar(u.id)) n += 1;
+    await sleep(500); // gentle on the relay
+  }
+  if (n) console.log(`[avatars] synced ${n}/${users.length}`);
+}
+
+function startAvatarLoop() {
+  void refreshAvatars(true).catch((e) => console.error("[avatars]", e)); // fill missing on start
+  setInterval(() => void refreshAvatars(false).catch((e) => console.error("[avatars]", e)), 24 * 60 * 60 * 1000);
+}
+
 async function pollLoop() {
   const api = bot!.api;
   let offset = 0;
@@ -217,6 +239,7 @@ async function main() {
   startMonitorLoop();
   startHeartbeatLoop();
   startRecurringLoop();
+  startAvatarLoop();
   console.log("[bot] long-polling (timeout=25) via relay…");
   await pollLoop();
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { requireUser } from "@/lib/auth";
 import { roleLabels, telegramEnabled } from "@/lib/constants";
@@ -49,13 +50,14 @@ export default async function TeamPage() {
       {/* Team list */}
       <section className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)]">
         {users.map((u, i) => (
-          <div
+          <Link
             key={u.id}
-            className={`flex items-center gap-3 px-4 py-3 ${
+            href={`/u/${u.id}`}
+            className={`flex items-center gap-3 px-4 py-3 transition hover:bg-[var(--color-surface-warm)] ${
               i > 0 ? "border-t border-[var(--color-line)]" : ""
             }`}
           >
-            <Avatar name={u.name} size={40} />
+            <Avatar name={u.name} src={u.avatarUrl} size={40} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium">{u.name}</span>
@@ -69,8 +71,9 @@ export default async function TeamPage() {
                 )}
               </div>
               <div className="truncate text-xs text-[var(--color-muted)]">
-                {u.position ?? "—"}
-                {u.manager && <span> · руководитель: {u.manager.name}</span>}
+                {u.username ? `@${u.username}` : (u.position ?? "—")}
+                {u.position && u.username && <span> · {u.position}</span>}
+                {u.manager && <span> · рук.: {u.manager.name}</span>}
               </div>
             </div>
             <span
@@ -78,7 +81,7 @@ export default async function TeamPage() {
             >
               {roleLabels[u.role]}
             </span>
-          </div>
+          </Link>
         ))}
       </section>
     </div>

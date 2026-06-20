@@ -10,7 +10,7 @@ export type TaskCard = {
   priority: Priority;
   dueDate: string | null;
   overdue: boolean;
-  assignee: { id: string; name: string } | null;
+  assignee: { id: string; name: string; avatarUrl: string | null } | null;
   commentCount: number;
   attachmentCount: number;
   tags: TagData[];

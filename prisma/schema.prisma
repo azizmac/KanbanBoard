@@ -25,6 +25,7 @@ model User {
   username   String? @unique // @handle used for mentions & login
   name       String
   avatarUrl  String?
+  phone      String? // shared by the user via the bot (request_contact)
   role       Role    @default(MEMBER)
   position   String? // job title / должность (e.g. "Backend Lead")
 

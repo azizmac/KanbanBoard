@@ -44,7 +44,7 @@ export default async function ProfilePage() {
         {/* Header — avatar overlaps the cover; name stays below it */}
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
           <div className="-mt-14 rounded-[26px] bg-[var(--color-surface)] p-1 shadow-[0_1px_3px_rgba(20,20,20,0.08)]">
-            <Avatar name={me.name} size={96} className="!rounded-[22px]" />
+            <Avatar name={me.name} src={me.avatarUrl} size={96} className="!rounded-[22px]" />
           </div>
           <div className="flex-1 pt-1 text-center sm:pt-0 sm:text-left">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
@@ -110,6 +110,16 @@ export default async function ProfilePage() {
             <div className="divide-y divide-[var(--color-line)] rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)]">
               <Row label="Должность" value={me.position ?? "—"} />
               <Row label="Руководитель" value={manager?.name ?? "—"} />
+              <Row
+                label="Телефон"
+                value={
+                  me.phone ? (
+                    <a href={`tel:${me.phone}`} className="font-mono text-[var(--color-accent)] hover:underline">{me.phone}</a>
+                  ) : (
+                    <span className="text-[var(--color-faint)]">в боте: /phone</span>
+                  )
+                }
+              />
               <Row
                 label="Telegram"
                 value={

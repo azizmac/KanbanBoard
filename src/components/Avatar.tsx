@@ -11,18 +11,34 @@ function initials(name: string) {
 
 export function Avatar({
   name,
+  src,
   size = 32,
   className = "",
   title,
   ring = false,
 }: {
   name: string;
+  /** photo URL (e.g. /api/avatar/<id>); falls back to initials when absent */
+  src?: string | null;
   size?: number;
   className?: string;
   title?: string;
   /** white 2px ring, for overlapping stacks */
   ring?: boolean;
 }) {
+  const shadow = ring ? "0 0 0 2px var(--color-surface)" : undefined;
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={name}
+        title={title ?? name}
+        className={`inline-block shrink-0 rounded-full object-cover ${className}`}
+        style={{ width: size, height: size, boxShadow: shadow }}
+      />
+    );
+  }
   const { bg, text } = avatarTint(name);
   return (
     <span
@@ -33,7 +49,7 @@ export function Avatar({
         fontSize: Math.round(size * 0.4),
         background: bg,
         color: text,
-        boxShadow: ring ? "0 0 0 2px var(--color-surface)" : undefined,
+        boxShadow: shadow,
       }}
       title={title ?? name}
     >

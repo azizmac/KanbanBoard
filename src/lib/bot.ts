@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from "grammy";
+import { Bot, InlineKeyboard, Keyboard } from "grammy";
 import {
   assignableUsers,
   canActOnTask,
@@ -12,6 +12,7 @@ import { verifyBoardLinkCode } from "./board-link";
 import { prisma } from "./prisma";
 import { escapeHtml } from "./telegram";
 import { verifyLinkToken } from "./telegram-link";
+import { syncAvatar } from "./tg-avatar";
 
 function appBase() {
   return (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
@@ -162,6 +163,7 @@ const HELP = [
   "В личке:",
   "/mytasks — ваши задачи (с кнопками действий)",
   "/today — что горит сегодня",
+  "/phone — поделиться номером телефона",
   "",
   "В группе (привязанной к доске):",
   "/tasks — задачи этой доски",
@@ -175,6 +177,7 @@ const HELP = [
 export const BOT_COMMANDS = [
   { command: "mytasks", description: "Мои задачи" },
   { command: "today", description: "Что горит сегодня" },
+  { command: "phone", description: "Поделиться номером" },
   { command: "tasks", description: "Задачи доски (в группе)" },
   { command: "new", description: "Новая задача (в группе)" },
   { command: "help", description: "Помощь" },
@@ -256,6 +259,7 @@ export function createBot() {
     }
     await prisma.user.updateMany({ where: { telegramId: tgId, NOT: { id: userId } }, data: { telegramId: null } });
     await prisma.user.update({ where: { id: userId }, data: { telegramId: tgId } });
+    void syncAvatar(userId).catch(() => {}); // pull their Telegram photo
     await ctx.reply(`Готово, ${user.name}! ✅\nУведомления будут приходить сюда. Команды — /help`);
   });
 
@@ -282,6 +286,34 @@ export function createBot() {
     const user = await userByTg(ctx);
     if (!user) return ctx.reply("Сначала привяжите аккаунт в приложении.");
     await replyView(ctx, await buildTaskListView(user.id, true));
+  });
+
+  bot.command("phone", async (ctx) => {
+    if (ctx.chat.type !== "private") return ctx.reply("Команду /phone отправьте в личке с ботом.");
+    const user = await userByTg(ctx);
+    if (!user) return ctx.reply("Сначала привяжите аккаунт в приложении.");
+    const kb = new Keyboard().requestContact("📱 Поделиться номером").resized().oneTime();
+    await ctx.reply(
+      "Нажмите кнопку ниже — ваш номер появится в профиле, чтобы коллеги могли быстро связаться. Это по желанию.",
+      { reply_markup: kb },
+    );
+  });
+
+  // The user tapped the request_contact button → save their phone.
+  bot.on("message:contact", async (ctx) => {
+    const c = ctx.message.contact;
+    if (c.user_id !== ctx.from?.id) {
+      await ctx.reply("Поделитесь, пожалуйста, своим собственным номером — кнопкой ниже.");
+      return;
+    }
+    const user = await userByTg(ctx);
+    if (!user) {
+      await ctx.reply("Сначала привяжите аккаунт в приложении.", { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+    const phone = c.phone_number.startsWith("+") ? c.phone_number : `+${c.phone_number}`;
+    await prisma.user.update({ where: { id: user.id }, data: { phone } });
+    await ctx.reply(`Спасибо! Номер ${phone} сохранён в профиле. ✅`, { reply_markup: { remove_keyboard: true } });
   });
 
   bot.command("new", async (ctx) => {
