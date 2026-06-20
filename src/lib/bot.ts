@@ -123,6 +123,13 @@ export function createBot() {
   const apiRoot = process.env.TELEGRAM_API_ROOT?.replace(/\/$/, "");
   const bot = new Bot(token, apiRoot ? { client: { apiRoot } } : undefined);
 
+  // Diagnostic: log every message the bot actually receives (chat type + text).
+  bot.use(async (ctx, next) => {
+    const text = ctx.message?.text;
+    if (text) console.log(`[bot] recv chat=${ctx.chat?.id} type=${ctx.chat?.type} text=${text.slice(0, 60)}`);
+    await next();
+  });
+
   const reply = (ctx: { reply: (s: string, o?: object) => Promise<unknown> }, html: string) =>
     ctx.reply(html, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
 
