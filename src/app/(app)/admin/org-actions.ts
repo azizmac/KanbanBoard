@@ -24,6 +24,15 @@ function ok() {
   return { ok: true as const };
 }
 
+/** Move a board into a region (or detach with null). Director only. */
+export async function setBoardRegion(boardId: string, regionId: string | null) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  await prisma.board.update({ where: { id: boardId }, data: { regionId: regionId || null } });
+  revalidatePath("/admin/org");
+  revalidatePath("/boards");
+  return { ok: true as const };
+}
+
 // ----- Positions (справочник должностей) -----
 
 export async function createPosition(name: string) {

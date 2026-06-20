@@ -15,6 +15,7 @@ import {
   deleteRegion,
   renameGroup,
   renameRegion,
+  setBoardRegion,
   setGroupBoards,
   setGroupMembers,
   setRegionManagers,
@@ -206,6 +207,32 @@ export function OrgPanel({
           {regions.length === 0 && <p className="text-sm text-[var(--color-muted)]">Регионов пока нет.</p>}
         </div>
       </section>
+
+      {/* Boards without a region (directors only) */}
+      {canManageRegions && boards.some((b) => !b.regionId) && (
+        <section className="mb-9">
+          <h2 className={sectionLabel}>Доски без региона</h2>
+          <div className="space-y-2">
+            {boards
+              .filter((b) => !b.regionId)
+              .map((b) => (
+                <div key={b.id} className="flex items-center gap-3 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3.5 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{b.name}</span>
+                  <select
+                    value=""
+                    onChange={(e) => e.target.value && run(setBoardRegion(b.id, e.target.value))}
+                    className="h-8 rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 text-[13px] outline-none focus:border-[var(--color-accent)]"
+                  >
+                    <option value="">→ в регион…</option>
+                    {regions.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
 
       {/* Groups */}
       <section>
