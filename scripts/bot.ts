@@ -58,9 +58,12 @@ function startReminderLoop() {
 async function main() {
   await bot!.api.setMyCommands(BOT_COMMANDS).catch((e) => console.error("[bot] setMyCommands", e));
 
+  // Telegram can't reach the RU mini-PC directly (inbound block) — deliver the
+  // webhook THROUGH the Cloudflare relay (/hook forwards to the app origin).
+  const relay = process.env.TELEGRAM_API_ROOT?.replace(/\/$/, "");
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (base) {
-    const url = `${base}/api/telegram/webhook`;
+  const url = relay ? `${relay}/hook` : base ? `${base}/api/telegram/webhook` : null;
+  if (url) {
     await bot!.api
       .setWebhook(url, {
         secret_token: process.env.TELEGRAM_WEBHOOK_SECRET || undefined,
@@ -70,7 +73,7 @@ async function main() {
       .then(() => console.log(`[bot] webhook set → ${url}`))
       .catch((e) => console.error("[bot] setWebhook", e));
   } else {
-    console.error("[bot] NEXT_PUBLIC_APP_URL not set — cannot register webhook");
+    console.error("[bot] no TELEGRAM_API_ROOT/NEXT_PUBLIC_APP_URL — cannot register webhook");
   }
 
   startReminderLoop();

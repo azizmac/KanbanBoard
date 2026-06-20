@@ -25,6 +25,24 @@ export default {
       return new Response("Telegram relay OK", { status: 200 });
     }
 
+    // Inbound webhook from Telegram → forward to the app origin. Cloudflare→origin
+    // is generic HTTPS (not Telegram-flagged), so it bypasses the RU-side block
+    // that makes Telegram time out talking to the mini-PC directly.
+    if (url.pathname === "/hook") {
+      const origin = (env.WEBHOOK_ORIGIN || "https://kanban.freshdv.ru").replace(/\/$/, "");
+      const resp = await fetch(origin + "/api/telegram/webhook", {
+        method: request.method,
+        headers: request.headers,
+        body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+        redirect: "follow",
+      });
+      return new Response(resp.body, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers: resp.headers,
+      });
+    }
+
     // Optional shared-secret gate.
     if (env.RELAY_KEY && url.searchParams.get("key") !== env.RELAY_KEY) {
       return new Response("forbidden", { status: 403 });
