@@ -53,6 +53,7 @@ services:
       target: build
     command: npx tsx scripts/bot.ts
     restart: unless-stopped
+    tty: true
     environment:
       TZ: Europe/Moscow
       DATABASE_URL: ${DATABASE_URL}
