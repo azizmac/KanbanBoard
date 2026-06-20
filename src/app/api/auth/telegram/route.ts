@@ -75,6 +75,12 @@ export async function GET(req: NextRequest) {
         avatarUrl: params.photo_url || null,
       },
     });
+    // invite into a specific access group (best-effort)
+    if (invite?.groupId) {
+      await prisma.group
+        .update({ where: { id: invite.groupId }, data: { members: { connect: { id: user.id } } } })
+        .catch(() => {});
+    }
     if (inviteTok) store.delete("kanban_invite");
     await createSession(user.id);
     redirect("/board");

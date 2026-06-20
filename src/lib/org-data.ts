@@ -1,4 +1,4 @@
-import { type Actor, isDirector } from "./access";
+import { type Actor, isDirector, manageableRegionIds } from "./access";
 import { prisma } from "./prisma";
 
 export type RegionOption = { id: string; name: string; color: string };
@@ -48,14 +48,21 @@ export async function listPositions(): Promise<{ id: string; name: string }[]> {
   return prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
 }
 
-/** Everything the admin org panel edits, with ids for multi-selects. */
-export async function getOrgAdminData() {
+/** Everything the org panel edits, scoped to what the user manages. */
+export async function getOrgAdminData(user: Actor) {
+  const director = isDirector(user);
+  const regionIds = director ? null : ((await manageableRegionIds(user)) ?? []);
+  const regionWhere = director ? {} : { id: { in: regionIds! } };
+  const scopedWhere = director ? {} : { regionId: { in: regionIds! } };
+
   const [regions, groups, users, boards, positions] = await Promise.all([
     prisma.region.findMany({
+      where: regionWhere,
       orderBy: { createdAt: "asc" },
       include: { managers: { select: { id: true } }, _count: { select: { boards: true } } },
     }),
     prisma.group.findMany({
+      where: scopedWhere,
       orderBy: { createdAt: "asc" },
       include: { members: { select: { id: true } }, boards: { select: { id: true } } },
     }),
@@ -64,7 +71,11 @@ export async function getOrgAdminData() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, role: true },
     }),
-    prisma.board.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, regionId: true } }),
+    prisma.board.findMany({
+      where: scopedWhere,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, regionId: true },
+    }),
     prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   return {

@@ -7,6 +7,7 @@ import { roleLabels } from "@/lib/constants";
 import { tint } from "@/lib/tints";
 import {
   createGroup,
+  createGroupInvite,
   createPosition,
   createRegion,
   deleteGroup,
@@ -77,12 +78,14 @@ export function OrgPanel({
   users,
   boards,
   positions,
+  canManageRegions,
 }: {
   regions: Region[];
   groups: Group[];
   users: UserOpt[];
   boards: BoardOpt[];
   positions: Opt[];
+  canManageRegions: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -91,6 +94,21 @@ export function OrgPanel({
   const [newGroup, setNewGroup] = useState("");
   const [newGroupRegion, setNewGroupRegion] = useState<string>(regions[0]?.id ?? "");
   const [newPosition, setNewPosition] = useState("");
+  const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
+
+  function genGroupInvite(groupId: string) {
+    startTransition(async () => {
+      const res = await createGroupInvite(groupId);
+      if (res.ok && res.url) {
+        setInvite({ groupId, url: res.url });
+        try {
+          await navigator.clipboard?.writeText(res.url);
+        } catch {
+          /* clipboard blocked */
+        }
+      } else setError(res.error ?? "Ошибка");
+    });
+  }
 
   function run(p: Promise<{ ok: boolean; error?: string }>) {
     startTransition(async () => {
@@ -125,22 +143,24 @@ export function OrgPanel({
 
       {/* Regions */}
       <section className="mb-9">
-        <h2 className={sectionLabel}>Регионы</h2>
-        <div className="mb-3 flex gap-2">
-          <input
-            value={newRegion}
-            onChange={(e) => setNewRegion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && newRegion.trim() && (run(createRegion(newRegion.trim())), setNewRegion(""))}
-            placeholder="Новый регион…"
-            className="h-9 w-[260px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
-          />
-          <button
-            onClick={() => newRegion.trim() && (run(createRegion(newRegion.trim())), setNewRegion(""))}
-            className="rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
-          >
-            Создать
-          </button>
-        </div>
+        <h2 className={sectionLabel}>{canManageRegions ? "Регионы" : "Мои регионы"}</h2>
+        {canManageRegions && (
+          <div className="mb-3 flex gap-2">
+            <input
+              value={newRegion}
+              onChange={(e) => setNewRegion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && newRegion.trim() && (run(createRegion(newRegion.trim())), setNewRegion(""))}
+              placeholder="Новый регион…"
+              className="h-9 w-[260px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+            />
+            <button
+              onClick={() => newRegion.trim() && (run(createRegion(newRegion.trim())), setNewRegion(""))}
+              className="rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
+            >
+              Создать
+            </button>
+          </div>
+        )}
         <div className="space-y-2.5">
           {regions.map((r) => {
             const c = tint(r.color);
@@ -150,28 +170,36 @@ export function OrgPanel({
                   <span className="grid h-8 w-8 place-items-center rounded-[9px] text-sm font-bold" style={{ background: c.bg, color: c.text }}>
                     {r.name.charAt(0)}
                   </span>
-                  <input
-                    defaultValue={r.name}
-                    onBlur={(e) => e.target.value.trim() && e.target.value !== r.name && run(renameRegion(r.id, e.target.value.trim()))}
-                    className="min-w-0 flex-1 rounded-[8px] border border-transparent bg-transparent px-1 py-0.5 text-[15px] font-semibold outline-none hover:border-[var(--color-border-input)] focus:border-[var(--color-accent)]"
-                  />
+                  {canManageRegions ? (
+                    <input
+                      defaultValue={r.name}
+                      onBlur={(e) => e.target.value.trim() && e.target.value !== r.name && run(renameRegion(r.id, e.target.value.trim()))}
+                      className="min-w-0 flex-1 rounded-[8px] border border-transparent bg-transparent px-1 py-0.5 text-[15px] font-semibold outline-none hover:border-[var(--color-border-input)] focus:border-[var(--color-accent)]"
+                    />
+                  ) : (
+                    <span className="min-w-0 flex-1 px-1 text-[15px] font-semibold">{r.name}</span>
+                  )}
                   <span className="text-[12px] text-[var(--color-faint)]">{r.boardCount} досок</span>
-                  <button
-                    onClick={() => confirm(`Удалить регион «${r.name}»? Доски и группы останутся, но без региона.`) && run(deleteRegion(r.id))}
-                    className="text-[12px] text-[var(--color-urgent)] hover:underline"
-                  >
-                    Удалить
-                  </button>
+                  {canManageRegions && (
+                    <button
+                      onClick={() => confirm(`Удалить регион «${r.name}»? Доски и группы останутся, но без региона.`) && run(deleteRegion(r.id))}
+                      className="text-[12px] text-[var(--color-urgent)] hover:underline"
+                    >
+                      Удалить
+                    </button>
+                  )}
                 </div>
-                <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-11">
-                  <span className="text-[12px] text-[var(--color-muted)]">Регионалы:</span>
-                  <MultiSelect
-                    all={userOpts}
-                    selected={r.managerIds}
-                    onChange={(ids) => run(setRegionManagers(r.id, ids))}
-                    addLabel="назначить"
-                  />
-                </div>
+                {canManageRegions && (
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-11">
+                    <span className="text-[12px] text-[var(--color-muted)]">Регионалы:</span>
+                    <MultiSelect
+                      all={userOpts}
+                      selected={r.managerIds}
+                      onChange={(ids) => run(setRegionManagers(r.id, ids))}
+                      addLabel="назначить"
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -221,12 +249,29 @@ export function OrgPanel({
                   />
                   <span className="text-[12px] text-[var(--color-faint)]">регион: {regionName(g.regionId)}</span>
                   <button
+                    onClick={() => genGroupInvite(g.id)}
+                    className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
+                  >
+                    Пригласить
+                  </button>
+                  <button
                     onClick={() => confirm(`Удалить группу «${g.name}»?`) && run(deleteGroup(g.id))}
                     className="text-[12px] text-[var(--color-urgent)] hover:underline"
                   >
                     Удалить
                   </button>
                 </div>
+                {invite?.groupId === g.id && (
+                  <div className="mt-2 flex items-center gap-2 rounded-[8px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-2.5 py-1.5">
+                    <span className="text-[11px] text-[var(--color-muted)]">Ссылка (роль «Линейный», в эту группу):</span>
+                    <input
+                      readOnly
+                      value={invite.url}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-[var(--color-muted)] outline-none"
+                    />
+                  </div>
+                )}
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <span className="w-[80px] text-[12px] text-[var(--color-muted)]">Участники:</span>
                   <MultiSelect all={userOpts} selected={g.memberIds} onChange={(ids) => run(setGroupMembers(g.id, ids))} addLabel="добавить" />
@@ -242,7 +287,8 @@ export function OrgPanel({
         </div>
       </section>
 
-      {/* Positions */}
+      {/* Positions (directors only) */}
+      {canManageRegions && (
       <section className="mt-9">
         <h2 className={sectionLabel}>Должности</h2>
         <p className="mb-3 text-[13px] text-[var(--color-muted)]">
@@ -275,6 +321,7 @@ export function OrgPanel({
           {positions.length === 0 && <p className="text-sm text-[var(--color-muted)]">Должностей пока нет.</p>}
         </div>
       </section>
+      )}
     </div>
   );
 }

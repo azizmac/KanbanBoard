@@ -13,12 +13,13 @@ export default async function AppLayout({
 }) {
   const user = await requireUser();
   const isAdmin = user.role === "ADMIN";
+  const isRegional = user.role === "MANAGER";
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar name={user.name} isAdmin={isAdmin} />
+      <Sidebar name={user.name} isAdmin={isAdmin} isRegional={isRegional} />
       <main className="min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
-      <MobileTabBar isAdmin={isAdmin} />
+      <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} />
     </div>
   );
 }

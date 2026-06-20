@@ -65,6 +65,19 @@ export async function manageableRegionIds(user: Actor): Promise<string[] | null>
   return [];
 }
 
+/** Can the user manage a region (its groups, invites)? Director, or its regional. */
+export async function canManageRegion(user: Actor, regionId: string | null): Promise<boolean> {
+  if (isDirector(user)) return true;
+  if (!isRegional(user) || !regionId) return false;
+  const ids = await manageableRegionIds(user);
+  return Boolean(ids && ids.includes(regionId));
+}
+
+/** Can the user manage a group (its members, boards, invites)? */
+export async function canManageGroup(user: Actor, group: { regionId: string | null }): Promise<boolean> {
+  return canManageRegion(user, group.regionId);
+}
+
 export async function canCreateBoardInRegion(user: Actor, regionId: string | null): Promise<boolean> {
   if (isDirector(user)) return true;
   if (!isRegional(user) || !regionId) return false;

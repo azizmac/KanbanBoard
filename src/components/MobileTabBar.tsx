@@ -43,14 +43,26 @@ function IconProfile() {
     </svg>
   );
 }
+function IconOrg() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2 2 7l10 5 10-5-10-5z" />
+      <path d="m2 17 10 5 10-5M2 12l10 5 10-5" />
+    </svg>
+  );
+}
 
-export function MobileTabBar({ isAdmin }: { isAdmin: boolean }) {
+export function MobileTabBar({ isAdmin, isRegional }: { isAdmin: boolean; isRegional: boolean }) {
   const pathname = usePathname();
   const items = [
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
     { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
     { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
-    ...(isAdmin ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }] : []),
+    ...(isAdmin
+      ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }]
+      : isRegional
+        ? [{ href: "/admin/org", label: "Регионы", icon: <IconOrg />, match: ["/admin/org"] }]
+        : []),
     { href: "/profile", label: "Профиль", icon: <IconProfile />, match: ["/profile"] },
   ];
 
