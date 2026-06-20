@@ -7,6 +7,7 @@ import { canAccessBoard, isDirector } from "./access";
 import { recordActivity } from "./activity";
 import { notify } from "./notify";
 import { prisma } from "./prisma";
+import { notifyBoardChange, notifyTaskChange } from "./realtime";
 
 export type Actor = { id: string; name: string; role: Role };
 
@@ -58,6 +59,7 @@ export async function completeTask(taskId: string, actor: Actor) {
   const count = await prisma.task.count({ where: { columnId: done.id } });
   await prisma.task.update({ where: { id: taskId }, data: { columnId: done.id, position: count } });
   await recordActivity(taskId, actor.id, "STATUS_CHANGED", `${task.column.name} → ${done.name}`);
+  await notifyBoardChange(task.column.boardId);
   return { ok: true as const, title: fresh.title };
 }
 
@@ -69,6 +71,7 @@ export async function snoozeTask(taskId: string, actor: Actor, days = 1) {
   const due = new Date(base.getTime() + days * 86_400_000);
   await prisma.task.update({ where: { id: taskId }, data: { dueDate: due } });
   await recordActivity(taskId, actor.id, "DUE_CHANGED", due.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }));
+  await notifyTaskChange(taskId);
   return { ok: true as const, title: task.title, due };
 }
 
@@ -80,6 +83,7 @@ export async function reassignTask(taskId: string, actor: Actor, newAssigneeId: 
   if (!u) return { ok: false as const, error: "Пользователь не найден" };
   await prisma.task.update({ where: { id: taskId }, data: { assigneeId: newAssigneeId } });
   await recordActivity(taskId, actor.id, "ASSIGNED", u.name);
+  await notifyTaskChange(taskId);
   if (newAssigneeId !== actor.id) {
     await notify({
       userId: newAssigneeId,
@@ -102,5 +106,6 @@ export async function createTaskInBoard(boardId: string, actor: Actor, title: st
     data: { title: trimmed.slice(0, 300), columnId: col.id, creatorId: actor.id, position: count },
   });
   await recordActivity(task.id, actor.id, "CREATED");
+  await notifyBoardChange(boardId);
   return { ok: true as const, id: task.id, title: task.title };
 }

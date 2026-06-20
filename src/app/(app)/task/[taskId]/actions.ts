@@ -8,6 +8,7 @@ import { priorityLabels } from "@/lib/constants";
 import { processMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
+import { notifyBoardChange, notifyTaskChange } from "@/lib/realtime";
 import { deleteStoredFile } from "@/lib/storage";
 
 const updateSchema = z.object({
@@ -117,6 +118,7 @@ export async function updateTask(
     });
   }
 
+  await notifyTaskChange(taskId);
   revalidatePath(`/task/${taskId}`);
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
@@ -162,12 +164,16 @@ export async function addComment(taskId: string, body: string) {
 
 export async function deleteTask(taskId: string) {
   const user = await requireUser();
-  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { column: { select: { boardId: true } } },
+  });
   if (!task) return { ok: false as const, error: "Задача не найдена" };
   if (task.creatorId !== user.id && !can(user, "deleteAnyTask")) {
     return { ok: false as const, error: "Недостаточно прав" };
   }
   await prisma.task.delete({ where: { id: taskId } });
+  await notifyBoardChange(task.column.boardId);
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
 }
@@ -214,6 +220,7 @@ export async function addTaskTag(taskId: string, input: z.input<typeof tagSchema
   }
   await prisma.task.update({ where: { id: taskId }, data: { tags: { connect: { id: tag.id } } } });
   await recordActivity(taskId, user.id, "TAG_ADDED", tag.name);
+  await notifyTaskChange(taskId);
 
   revalidatePath(`/task/${taskId}`);
   revalidatePath("/board/[boardId]", "page");
@@ -225,6 +232,7 @@ export async function removeTaskTag(taskId: string, tagId: string) {
   const tag = await prisma.tag.findUnique({ where: { id: tagId }, select: { name: true } });
   await prisma.task.update({ where: { id: taskId }, data: { tags: { disconnect: { id: tagId } } } });
   if (tag) await recordActivity(taskId, user.id, "TAG_REMOVED", tag.name);
+  await notifyTaskChange(taskId);
   revalidatePath(`/task/${taskId}`);
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };

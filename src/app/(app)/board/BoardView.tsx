@@ -14,7 +14,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AvatarStack } from "@/components/Avatar";
 import { pluralTasks } from "@/lib/format";
 import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
@@ -46,6 +47,47 @@ export function BoardView({
   const [activeColumnId, setActiveColumnId] = useState<string>(board.columns[0]?.id ?? "");
   const [query, setQuery] = useState("");
   const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  // Signature of the server-provided board content. After a router.refresh
+  // (triggered by a live SSE ping), if it differs from what we last applied,
+  // resync local state to server truth. During local optimistic edits the parent
+  // doesn't re-render, so this stays a no-op until real server data changes.
+  const sig = useMemo(
+    () =>
+      board.columns
+        .map(
+          (c) =>
+            `${c.id}:${c.tasks
+              .map((t) => `${t.id}~${t.title}~${t.assignee?.id ?? ""}~${t.priority}~${t.dueDate ?? ""}~${t.tags.length}`)
+              .join(",")}`,
+        )
+        .join("|"),
+    [board],
+  );
+  const sigRef = useRef(sig);
+  useEffect(() => {
+    if (sigRef.current !== sig) {
+      sigRef.current = sig;
+      setColumns(board.columns);
+      columnsRef.current = board.columns;
+    }
+  }, [sig, board.columns]);
+
+  // Live updates: a change to this board (by anyone, incl. the bot) pings us; we
+  // refetch the server component, which feeds new props through the sync above.
+  useEffect(() => {
+    const es = new EventSource(`/api/board/${board.id}/events`);
+    let t: ReturnType<typeof setTimeout> | undefined;
+    es.onmessage = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => router.refresh(), 400);
+    };
+    return () => {
+      if (t) clearTimeout(t);
+      es.close();
+    };
+  }, [board.id, router]);
 
   function setCols(updater: (prev: ColumnData[]) => ColumnData[]) {
     setColumns((prev) => {

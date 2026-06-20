@@ -6,6 +6,7 @@ import { canCreateBoardInRegion, canManageBoard, isDirector, isRegional } from "
 import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyTaskChange } from "@/lib/realtime";
 
 const createSchema = z.object({
   columnId: z.string().min(1),
@@ -29,6 +30,7 @@ export async function createTask(input: { columnId: string; title: string }) {
     },
   });
   await recordActivity(task.id, user.id, "CREATED");
+  await notifyTaskChange(task.id);
 
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const, id: task.id };
@@ -57,6 +59,7 @@ export async function moveTask(input: {
       prisma.task.update({ where: { id }, data: { position: index } }),
     ),
   ]);
+  await notifyTaskChange(taskId);
 
   revalidatePath("/board/[boardId]", "page");
   return { ok: true as const };
