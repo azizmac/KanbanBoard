@@ -1,8 +1,8 @@
-// Telegram bot WORKER. Long polling does not work through the Cloudflare relay
-// (the Worker can't hold a 30s getUpdates), so the bot runs in WEBHOOK mode:
-// Telegram pushes updates to <APP_URL>/api/telegram/webhook (handled by the app),
-// and this process just (re)registers the webhook, sets the command menu, and
-// runs the daily reminder digest. Outbound calls go through TELEGRAM_API_ROOT.
+// Telegram bot worker. Neither long-polling nor webhooks work from the RU mini-PC:
+//   - long getUpdates can't be held open through the Cloudflare relay;
+//   - Telegram/Cloudflare can't reach the RU origin for a webhook (inbound block).
+// So we SHORT-poll: getUpdates({timeout:0}) through the relay (each call returns
+// instantly) in a loop, with a small idle delay. Plus the daily reminder digest.
 import "dotenv/config";
 import { BOT_COMMANDS, createBot, myTasksMessage } from "../src/lib/bot";
 import { prisma } from "../src/lib/prisma";
@@ -17,6 +17,7 @@ if (process.env.TELEGRAM_API_ROOT) {
 }
 
 const HTML = { parse_mode: "HTML", link_preview_options: { is_disabled: true } } as const;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** DM each linked user a digest of their due-soon/overdue tasks. */
 async function sendReminders() {
@@ -38,7 +39,6 @@ async function sendReminders() {
   if (sent) console.log(`[reminders] sent ${sent} digest(s)`);
 }
 
-// Once a day at REMINDER_HOUR (TZ=Europe/Moscow set on the bot service in compose).
 const REMINDER_HOUR = Number(process.env.REMINDER_HOUR ?? 9);
 let lastReminderDay = "";
 function startReminderLoop() {
@@ -55,29 +55,40 @@ function startReminderLoop() {
   );
 }
 
-async function main() {
-  await bot!.api.setMyCommands(BOT_COMMANDS).catch((e) => console.error("[bot] setMyCommands", e));
-
-  // Telegram can't reach the RU mini-PC directly (inbound block) — deliver the
-  // webhook THROUGH the Cloudflare relay (/hook forwards to the app origin).
-  const relay = process.env.TELEGRAM_API_ROOT?.replace(/\/$/, "");
-  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  const url = relay ? `${relay}/hook` : base ? `${base}/api/telegram/webhook` : null;
-  if (url) {
-    await bot!.api
-      .setWebhook(url, {
-        secret_token: process.env.TELEGRAM_WEBHOOK_SECRET || undefined,
-        drop_pending_updates: true,
+async function pollLoop() {
+  let offset = 0;
+  for (;;) {
+    let updates: Awaited<ReturnType<typeof bot.api.getUpdates>> = [];
+    try {
+      updates = await bot!.api.getUpdates({
+        offset,
+        timeout: 0,
         allowed_updates: ["message", "my_chat_member"],
-      })
-      .then(() => console.log(`[bot] webhook set → ${url}`))
-      .catch((e) => console.error("[bot] setWebhook", e));
-  } else {
-    console.error("[bot] no TELEGRAM_API_ROOT/NEXT_PUBLIC_APP_URL — cannot register webhook");
+      });
+    } catch (e) {
+      console.error("[poll]", e instanceof Error ? e.message : e);
+      await sleep(3000);
+      continue;
+    }
+    for (const u of updates) {
+      offset = u.update_id + 1;
+      try {
+        await bot!.handleUpdate(u);
+      } catch (e) {
+        console.error("[handle]", e);
+      }
+    }
+    if (updates.length === 0) await sleep(1500);
   }
+}
 
+async function main() {
+  await bot!.api.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
+  await bot!.init().catch((e) => console.error("[bot] init", e));
+  await bot!.api.setMyCommands(BOT_COMMANDS).catch((e) => console.error("[bot] setMyCommands", e));
   startReminderLoop();
-  console.log("[bot] worker up (webhook mode + reminders)");
+  console.log("[bot] short-polling via relay…");
+  await pollLoop();
 }
 
 main();
