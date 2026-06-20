@@ -123,6 +123,20 @@ export function createBot() {
   const apiRoot = process.env.TELEGRAM_API_ROOT?.replace(/\/$/, "");
   const bot = new Bot(token, apiRoot ? { client: { apiRoot } } : undefined);
 
+  // grammY's built-in HTTP client hangs through the Cloudflare relay (while a
+  // plain fetch works fine). Route every API call through plain fetch.
+  if (apiRoot) {
+    bot.api.config.use(async (_prev, method, payload, signal) => {
+      const res = await fetch(`${apiRoot}/bot${token}/${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload ?? {}),
+        signal,
+      });
+      return (await res.json()) as Awaited<ReturnType<typeof _prev>>;
+    });
+  }
+
   // Diagnostic: log every message the bot actually receives (chat type + text).
   bot.use(async (ctx, next) => {
     const text = ctx.message?.text;
