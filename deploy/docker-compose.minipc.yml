@@ -58,6 +58,9 @@ services:
       TZ: Europe/Moscow
       DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      # Must match the app: board-link codes are HMAC-signed with SESSION_SECRET,
+      # and the bot verifies /link codes — a missing/different secret rejects them.
+      SESSION_SECRET: ${SESSION_SECRET}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       TELEGRAM_API_ROOT: ${TELEGRAM_API_ROOT}
