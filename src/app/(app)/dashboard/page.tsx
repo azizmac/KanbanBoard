@@ -107,17 +107,22 @@ export default async function DashboardPage() {
         ) : (
           <ul className="mt-3 divide-y divide-[var(--color-line)]">
             {d.perPerson.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 py-2.5">
-                <Avatar name={p.name} size={30} />
-                <span className="min-w-0 flex-1 truncate text-[13.5px] text-[var(--color-ink)]">{p.name}</span>
-                {p.overdue > 0 && (
-                  <span className="rounded-full bg-[var(--color-urgent-bg)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--color-urgent)]">
-                    {p.overdue} просроч.
+              <li key={p.id}>
+                <Link
+                  href={`/u/${p.id}`}
+                  className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-[var(--color-surface-warm)]"
+                >
+                  <Avatar name={p.name} size={30} />
+                  <span className="min-w-0 flex-1 truncate text-[13.5px] text-[var(--color-ink)]">{p.name}</span>
+                  {p.overdue > 0 && (
+                    <span className="rounded-full bg-[var(--color-urgent-bg)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--color-urgent)]">
+                      {p.overdue} просроч.
+                    </span>
+                  )}
+                  <span className="w-16 text-right text-[13px] tabular-nums text-[var(--color-muted)]">
+                    {p.open} задач
                   </span>
-                )}
-                <span className="w-16 text-right text-[13px] tabular-nums text-[var(--color-muted)]">
-                  {p.open} задач
-                </span>
+                </Link>
               </li>
             ))}
           </ul>

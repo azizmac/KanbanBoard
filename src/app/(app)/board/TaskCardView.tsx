@@ -49,6 +49,7 @@ export function TaskCardContent({
 }) {
   const due = task.dueDate ? new Date(task.dueDate) : null;
   const overdue = task.overdue;
+  const router = useRouter();
 
   return (
     <div
@@ -117,9 +118,17 @@ export function TaskCardContent({
               </span>
             )}
             {task.assignee && (
-              <span className="ml-auto">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/u/${task.assignee!.id}`);
+                }}
+                className="ml-auto rounded-full"
+                title={`Профиль: ${task.assignee.name}`}
+              >
                 <Avatar name={task.assignee.name} src={task.assignee.avatarUrl} size={24} />
-              </span>
+              </button>
             )}
           </div>
         )}

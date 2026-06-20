@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
+import { UserLink } from "@/components/UserLink";
 import { MentionTextarea } from "@/components/MentionTextarea";
 import { priorityChip, priorityDot, priorityLabels } from "@/lib/constants";
 import { activityText } from "@/lib/format";
@@ -50,7 +51,7 @@ function fileExt(name: string) {
 }
 
 function RichText({ text, team }: { text: string; team: TeamUser[] }) {
-  const usernames = new Set(team.filter((u) => u.username).map((u) => u.username!.toLowerCase()));
+  const byHandle = new Map(team.filter((u) => u.username).map((u) => [u.username!.toLowerCase(), u.id]));
   const nodes: React.ReactNode[] = [];
   const re = /(@\w{2,32})/g;
   let last = 0;
@@ -59,11 +60,12 @@ function RichText({ text, team }: { text: string; team: TeamUser[] }) {
   while ((m = re.exec(text))) {
     if (m.index > last) nodes.push(text.slice(last, m.index));
     const handle = m[1].slice(1).toLowerCase();
-    if (usernames.has(handle)) {
+    const uid = byHandle.get(handle);
+    if (uid) {
       nodes.push(
-        <span key={key++} className="font-medium text-[var(--color-accent)]">
+        <Link key={key++} href={`/u/${uid}`} className="font-medium text-[var(--color-accent)] hover:underline">
           {m[1]}
-        </span>,
+        </Link>,
       );
     } else {
       nodes.push(m[1]);
@@ -381,10 +383,12 @@ export function TaskDetailClient({
               {feed.map((item) =>
                 item.type === "comment" ? (
                   <div key={item.comment.id} className="flex gap-2.5">
-                    <Avatar name={item.comment.author.name} size={30} />
+                    <UserLink id={item.comment.author.id} className="shrink-0">
+                      <Avatar name={item.comment.author.name} size={30} />
+                    </UserLink>
                     <div className="min-w-0 flex-1 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3 py-2">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold">{item.comment.author.name}</span>
+                        <UserLink id={item.comment.author.id} className="text-sm font-semibold hover:underline">{item.comment.author.name}</UserLink>
                         <span className="font-mono text-xs text-[var(--color-faint)]">
                           {formatDateTime(item.comment.createdAt)}
                         </span>
@@ -485,7 +489,8 @@ export function TaskDetailClient({
           <div className="space-y-1.5 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-muted)]">
             <div className="flex items-center gap-1.5">
               <Avatar name={task.creator.name} size={18} />
-              Автор: {task.creator.name}
+              Автор:{" "}
+              <UserLink id={task.creator.id} className="hover:underline">{task.creator.name}</UserLink>
             </div>
             <div className="font-mono">Создано: {formatDateTime(task.createdAt)}</div>
           </div>
