@@ -41,6 +41,49 @@
   --radius-card: 13px;
 }
 
+/* ---- Dark theme (warm graphite). The app uses var(--color-*) everywhere, so
+   overriding the tokens here flips the whole UI. data-theme is set on <html>
+   by the no-flash script + ThemeToggle (light | dark, "system" is resolved).
+   Wrapped in @layer base so Tailwind v4 emits it (a bare :root[...] redefining
+   theme vars gets stripped). */
+@layer base {
+  html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #161412;
+  --color-surface: #221f1c;
+  --color-surface-warm: #1b1a18;
+  --color-sidebar: #0e0d0c;
+
+  --color-ink: #f4f2ec;
+  --color-body: #e9e6df;
+  --color-muted: #8c867b;
+  --color-faint: #6c675f;
+
+  --color-line: #2a2723;
+  --color-border-card: #322e29;
+  --color-border-input: #322e29;
+
+  --color-accent: #8579f2;
+  --color-accent-soft: #2a2550;
+  --color-accent-tint: #2a2550;
+  --color-success: #6fd0a0;
+
+  --color-urgent: #fca5a5;
+  --color-urgent-bg: #3a1f1f;
+  --color-urgent-dot: #f04438;
+  --color-high: #f5c77e;
+  --color-high-bg: #382b12;
+  --color-high-dot: #f79009;
+  --color-normal: #8fcbf2;
+  --color-normal-bg: #14303c;
+  --color-normal-dot: #2e90fa;
+  --color-low: #9a988f;
+  --color-low-bg: #2a2723;
+  --color-low-dot: #6c675f;
+  }
+}
+
 html,
 body {
   height: 100%;

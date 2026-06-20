@@ -19,7 +19,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen">
       <PushSetup />
-      <Sidebar name={user.name} isAdmin={isAdmin} isRegional={isRegional} />
+      <Sidebar name={user.name} avatarUrl={user.avatarUrl} isAdmin={isAdmin} isRegional={isRegional} />
       <main className="min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
       <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} />
     </div>

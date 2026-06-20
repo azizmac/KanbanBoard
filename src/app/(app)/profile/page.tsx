@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/Avatar";
 import { PushToggle } from "@/components/PushToggle";
+import { ThemeSegment } from "@/components/ThemeToggle";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/auth-actions";
 import { roleLabels } from "@/lib/constants";
@@ -130,6 +131,10 @@ export default async function ProfilePage() {
                   )
                 }
               />
+            </div>
+            <div className="rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-4">
+              <div className="mb-2.5 text-sm font-medium text-[var(--color-ink)]">Оформление</div>
+              <ThemeSegment />
             </div>
             <PushToggle />
             <form action={logoutAction}>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "./Avatar";
 import { LogoIcon } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 function IconBoard() {
   return (
@@ -73,10 +74,12 @@ function IconTemplate() {
 
 export function Sidebar({
   name,
+  avatarUrl,
   isAdmin,
   isRegional,
 }: {
   name: string;
+  avatarUrl?: string | null;
   isAdmin: boolean;
   isRegional: boolean;
 }) {
@@ -126,15 +129,18 @@ export function Sidebar({
         );
       })}
 
-      <Link
-        href="/profile"
-        title="Профиль"
-        className={`mt-auto rounded-full ring-2 transition ${
-          profileActive ? "ring-white/70" : "ring-transparent hover:ring-white/20"
-        }`}
-      >
-        <Avatar name={name} size={36} />
-      </Link>
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <ThemeToggle />
+        <Link
+          href="/profile"
+          title="Профиль"
+          className={`rounded-full ring-2 transition ${
+            profileActive ? "ring-white/70" : "ring-transparent hover:ring-white/20"
+          }`}
+        >
+          <Avatar name={name} src={avatarUrl} size={36} />
+        </Link>
+      </div>
     </aside>
   );
 }
