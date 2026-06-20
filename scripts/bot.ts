@@ -56,11 +56,12 @@ function startReminderLoop() {
 }
 
 async function pollLoop() {
+  const api = bot!.api;
   let offset = 0;
   for (;;) {
-    let updates: Awaited<ReturnType<typeof bot.api.getUpdates>> = [];
+    let updates: Awaited<ReturnType<typeof api.getUpdates>> = [];
     try {
-      updates = await bot!.api.getUpdates({
+      updates = await api.getUpdates({
         offset,
         timeout: 0,
         allowed_updates: ["message", "my_chat_member"],
