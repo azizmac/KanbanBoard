@@ -38,10 +38,11 @@ export default {
     }
 
     // Dead-man's-switch heartbeat: the bot pings this to prove it's alive.
+    // Only updates last_beat — the `down` flag is managed solely by the cron, so
+    // it can still fire the "recovered" message on the first non-stale tick.
     if (url.pathname === "/heartbeat") {
       if (env.HEARTBEAT) {
         await env.HEARTBEAT.put("last_beat", String(Date.now()));
-        await env.HEARTBEAT.delete("down"); // any beat clears the down flag
       }
       return new Response("ok", { status: 200 });
     }
