@@ -67,6 +67,19 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 `migrate` re-runs automatically and applies any new migrations.
 
+## Backups (prod DB)
+`deploy/backup.cmd` runs `pg_dump -Fc` of the kanban Postgres into
+`C:\Users\minipc\kanban-backups\`, keeping the last 14 days. It's installed at
+`C:\Users\minipc\kanban-backup.cmd` and scheduled daily at 03:30 via a Windows
+Task (`KanbanBackup`).
+
+Run on demand: `C:\Users\minipc\kanban-backup.cmd`
+Restore a dump:
+```cmd
+docker exec -i kanban-pg pg_restore -U kanban -d kanban --clean --if-exists < kanban-YYYYMMDD-HHMMSS.dump
+```
+(Optional: copy the `kanban-backups` folder offsite / to MinIO periodically.)
+
 ## Heads-up: Login Widget needs the user's browser to reach Telegram
 The official widget loads `telegram.org` / `oauth.telegram.org` **in each user's
 browser**. Telegram messenger generally works in RU, but if the widget fails to load
