@@ -19,9 +19,14 @@ REM   set "S3_ENDPOINT=http://host.docker.internal:9000"
 REM   set "S3_USER=<minio root user>"
 REM   set "S3_PASS=<minio root password>"
 REM   set "S3_BUCKET=kanban-backups"
+REM Keep `call` and the docker run OUT of a parenthesised ( ... ) block: inside a
+REM block cmd expands %S3_BUCKET% at PARSE time — before `call` sets it — so the
+REM mirror target became `m/` (empty bucket) and mc made one junk bucket per dump
+REM file. At top level the vars expand after `call`, as intended.
 set "SECRET=C:\Users\minipc\kanban-backup.secret.cmd"
-if exist "%SECRET%" (
-  call "%SECRET%"
-  docker run --rm --add-host host.docker.internal:host-gateway -v "%BACKUP_DIR%":/backups --entrypoint /bin/sh minio/mc -c "mc alias set m %S3_ENDPOINT% %S3_USER% %S3_PASS% >/dev/null 2>&1 && mc mb -p m/%S3_BUCKET% >/dev/null 2>&1; mc mirror --overwrite --remove /backups m/%S3_BUCKET%"
-)
+if not exist "%SECRET%" goto :done
+call "%SECRET%"
+if not defined S3_BUCKET set "S3_BUCKET=kanban-backups"
+docker run --rm --add-host host.docker.internal:host-gateway -v "%BACKUP_DIR%":/backups --entrypoint /bin/sh minio/mc -c "mc alias set m %S3_ENDPOINT% %S3_USER% %S3_PASS% >/dev/null 2>&1 && mc mb -p m/%S3_BUCKET% >/dev/null 2>&1; mc mirror --overwrite --remove /backups m/%S3_BUCKET%"
+:done
 endlocal
