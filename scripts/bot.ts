@@ -1,8 +1,8 @@
-// Telegram bot via long polling. Handles /start linking, quick commands and a
-// daily reminder digest.
-//   npm run bot
-// Uses the same token as production; if a webhook is set it's removed so polling
-// works (re-run `npm run webhook:set <url>` to restore a webhook).
+// Telegram bot WORKER. Long polling does not work through the Cloudflare relay
+// (the Worker can't hold a 30s getUpdates), so the bot runs in WEBHOOK mode:
+// Telegram pushes updates to <APP_URL>/api/telegram/webhook (handled by the app),
+// and this process just (re)registers the webhook, sets the command menu, and
+// runs the daily reminder digest. Outbound calls go through TELEGRAM_API_ROOT.
 import "dotenv/config";
 import { BOT_COMMANDS, createBot, myTasksMessage } from "../src/lib/bot";
 import { prisma } from "../src/lib/prisma";
@@ -38,7 +38,7 @@ async function sendReminders() {
   if (sent) console.log(`[reminders] sent ${sent} digest(s)`);
 }
 
-// Once a day at REMINDER_HOUR (container TZ — set TZ=Europe/Moscow in compose).
+// Once a day at REMINDER_HOUR (TZ=Europe/Moscow set on the bot service in compose).
 const REMINDER_HOUR = Number(process.env.REMINDER_HOUR ?? 9);
 let lastReminderDay = "";
 function startReminderLoop() {
@@ -56,12 +56,25 @@ function startReminderLoop() {
 }
 
 async function main() {
-  await bot!.api.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
   await bot!.api.setMyCommands(BOT_COMMANDS).catch((e) => console.error("[bot] setMyCommands", e));
+
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (base) {
+    const url = `${base}/api/telegram/webhook`;
+    await bot!.api
+      .setWebhook(url, {
+        secret_token: process.env.TELEGRAM_WEBHOOK_SECRET || undefined,
+        drop_pending_updates: true,
+        allowed_updates: ["message", "my_chat_member"],
+      })
+      .then(() => console.log(`[bot] webhook set → ${url}`))
+      .catch((e) => console.error("[bot] setWebhook", e));
+  } else {
+    console.error("[bot] NEXT_PUBLIC_APP_URL not set — cannot register webhook");
+  }
+
   startReminderLoop();
-  await bot!.start({
-    onStart: (info) => console.log(`[bot] @${info.username} is polling for updates…`),
-  });
+  console.log("[bot] worker up (webhook mode + reminders)");
 }
 
 main();
