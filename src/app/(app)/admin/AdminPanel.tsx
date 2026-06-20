@@ -136,8 +136,8 @@ export function AdminPanel({
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="mb-1.5 flex items-center gap-2.5">
-            <h1 className="text-[24px] font-bold tracking-[-0.03em]">Управление доступом</h1>
+          <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+            <h1 className="text-[20px] font-bold tracking-[-0.03em] sm:text-[24px]">Управление доступом</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF0C7] px-2.5 py-1 text-[11.5px] font-semibold text-[#B54708]">
               <ShieldIcon />
               Только админ
@@ -148,7 +148,7 @@ export function AdminPanel({
             <span className="ml-1">все видят все доски</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Link
             href="/admin/org"
             className="flex h-10 items-center gap-2 rounded-[11px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)]"
