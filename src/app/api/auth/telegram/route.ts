@@ -72,7 +72,8 @@ export async function GET(req: NextRequest) {
         username,
         name,
         role: invite?.role ?? "MEMBER",
-        avatarUrl: params.photo_url || null,
+        // avatar is pulled into MinIO by the bot (reliable from RU), not the
+        // t.me CDN URL from the widget which may not load here.
       },
     });
     // invite into a specific access group (best-effort)

@@ -184,7 +184,14 @@ function startRecurringLoop() {
  *  already have an avatar (startup), false refreshes everyone (daily). */
 async function refreshAvatars(onlyMissing: boolean) {
   const users = await prisma.user.findMany({
-    where: { active: true, telegramId: { not: null }, ...(onlyMissing ? { avatarUrl: null } : {}) },
+    where: {
+      active: true,
+      telegramId: { not: null },
+      // "missing" = no avatar yet, or an external (t.me) URL not yet localized
+      ...(onlyMissing
+        ? { OR: [{ avatarUrl: null }, { NOT: { avatarUrl: { startsWith: "/api/avatar" } } }] }
+        : {}),
+    },
     select: { id: true },
   });
   let n = 0;
