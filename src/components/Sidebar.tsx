@@ -116,7 +116,7 @@ export function Sidebar({
 
   return (
     <aside className="sticky top-0 hidden h-screen w-[68px] shrink-0 flex-col items-center gap-1 bg-[var(--color-sidebar)] py-4 md:flex">
-      <Link href="/boards" title="Поток" className="mb-3">
+      <Link href="/home" title="Поток — на главную" className="mb-3">
         <LogoIcon size={34} />
       </Link>
 
