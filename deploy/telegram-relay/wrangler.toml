@@ -6,3 +6,12 @@ compatibility_date = "2024-11-01"
 #   npx wrangler secret put RELAY_KEY
 # then use  TELEGRAM_API_ROOT=https://tg-relay.<you>.workers.dev/?key=<RELAY_KEY>
 # (grammY appends the path after the root, so prefer leaving RELAY_KEY unset.)
+
+# Dead-man's switch: store the last heartbeat, alert via cron when it goes stale.
+# Secrets (set once): ALERT_BOT_TOKEN, ALERT_CHAT_ID.
+[[kv_namespaces]]
+binding = "HEARTBEAT"
+id = "420f13fa46714ea8b0bafcd467e6fcd6"
+
+[triggers]
+crons = ["*/2 * * * *"]

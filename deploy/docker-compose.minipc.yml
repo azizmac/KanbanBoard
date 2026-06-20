@@ -64,6 +64,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       TELEGRAM_API_ROOT: ${TELEGRAM_API_ROOT}
+      # Monitoring: where downtime alerts go (empty → all active directors),
+      # and the external dead-man's-switch URL the bot pings (empty → disabled).
+      ALERT_CHAT_ID: ${ALERT_CHAT_ID:-}
+      HEARTBEAT_URL: ${HEARTBEAT_URL:-https://tg-relay.freshdv.workers.dev/heartbeat}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
