@@ -1,4 +1,5 @@
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { PushSetup } from "@/components/PushSetup";
 import { Sidebar } from "@/components/Sidebar";
 import { requireUser } from "@/lib/auth";
 
@@ -17,6 +18,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen">
+      <PushSetup />
       <Sidebar name={user.name} isAdmin={isAdmin} isRegional={isRegional} />
       <main className="min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
       <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} />

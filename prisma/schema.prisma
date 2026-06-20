@@ -45,6 +45,7 @@ model User {
   sessions      Session[]
   notifications Notification[]
   activities    Activity[]
+  pushSubscriptions PushSubscription[]
 
   // org hierarchy: regions a (regional) manager runs + groups the user belongs to
   managedRegions Region[] @relation("RegionManagers")
@@ -290,4 +291,28 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId, read])
+}
+
+// ----- Web Push (PWA) -----
+
+// A browser/device push subscription (one per installed PWA / browser).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Singleton holding the server's VAPID keypair (generated on first use, so web
+// push needs zero env config). Always id = "default".
+model PushConfig {
+  id         String   @id @default("default")
+  publicKey  String
+  privateKey String
+  createdAt  DateTime @default(now())
 }

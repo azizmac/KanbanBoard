@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/Avatar";
+import { PushToggle } from "@/components/PushToggle";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/auth-actions";
 import { roleLabels } from "@/lib/constants";
@@ -120,6 +121,7 @@ export default async function ProfilePage() {
                 }
               />
             </div>
+            <PushToggle />
             <form action={logoutAction}>
               <button
                 type="submit"

@@ -1,5 +1,6 @@
 import type { NotificationType } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
+import { sendPush } from "./push";
 import { escapeHtml, sendTelegram } from "./telegram";
 
 type NotifyInput = {
@@ -39,4 +40,11 @@ export async function notify(input: NotifyInput) {
       });
     }
   }
+
+  // Web push to the user's installed PWAs / browsers (independent of Telegram).
+  await sendPush(input.userId, {
+    title: "Поток",
+    body: input.message,
+    url: input.taskId ? `/task/${input.taskId}` : "/",
+  }).catch(() => {});
 }
