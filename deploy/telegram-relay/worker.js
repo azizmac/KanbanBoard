@@ -58,11 +58,18 @@ export default {
     };
 
     const resp = await fetch(target, init);
-    // Pass the response straight back to the bot.
-    return new Response(resp.body, {
+    // Buffer the body and return clean headers. Streaming the body straight
+    // through makes grammY's Node HTTP client throw ERR_STREAM_PREMATURE_CLOSE,
+    // so the bot's getUpdates never completes.
+    const buf = await resp.arrayBuffer();
+    const headers = new Headers(resp.headers);
+    headers.delete("content-encoding");
+    headers.delete("content-length");
+    headers.delete("transfer-encoding");
+    return new Response(buf, {
       status: resp.status,
       statusText: resp.statusText,
-      headers: resp.headers,
+      headers,
     });
   },
 };
