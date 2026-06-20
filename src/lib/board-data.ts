@@ -64,6 +64,7 @@ export async function getBoard(user: Actor, boardId?: string): Promise<BoardData
     id: board.id,
     name: board.name,
     color: board.color,
+    telegramChatId: board.telegramChatId,
     columns: board.columns.map((c) => ({
       id: c.id,
       name: c.name,

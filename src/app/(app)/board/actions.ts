@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canCreateBoardInRegion, isDirector, isRegional } from "@/lib/access";
+import { canCreateBoardInRegion, canManageBoard, isDirector, isRegional } from "@/lib/access";
 import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -95,4 +95,15 @@ export async function createBoard(input: z.input<typeof boardSchema>) {
 
   revalidatePath("/boards");
   return { ok: true as const, id: board.id };
+}
+
+export async function unlinkBoardTelegram(boardId: string) {
+  const user = await requireUser();
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true } });
+  if (!board || !(await canManageBoard(user, board))) {
+    return { ok: false as const, error: "Недостаточно прав" };
+  }
+  await prisma.board.update({ where: { id: boardId }, data: { telegramChatId: null } });
+  revalidatePath("/board/[boardId]", "page");
+  return { ok: true as const };
 }

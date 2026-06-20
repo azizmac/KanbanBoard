@@ -1,5 +1,4 @@
 import { Bot } from "grammy";
-import { canManageBoard } from "./access";
 import { verifyBoardLinkCode } from "./board-link";
 import { prisma } from "./prisma";
 import { escapeHtml } from "./telegram";
@@ -84,6 +83,17 @@ async function boardTasksMessage(boardId: string): Promise<string> {
   return `📋 <b>${escapeHtml(board.name)}</b>\n\n${blocks.length ? blocks.join("\n\n") : "Активных задач нет."}`;
 }
 
+/** Bind a chat to a board from a signed code (the code is the authorization). */
+async function linkChatToBoard(chatId: string, code: string): Promise<string> {
+  const boardId = verifyBoardLinkCode(code);
+  if (!boardId) return "Неверный код привязки. Возьмите свежий код на доске в приложении.";
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true, name: true } });
+  if (!board) return "Доска не найдена.";
+  await prisma.board.updateMany({ where: { telegramChatId: chatId }, data: { telegramChatId: null } });
+  await prisma.board.update({ where: { id: board.id }, data: { telegramChatId: chatId } });
+  return `✅ Группа привязана к доске «${board.name}». Команда /tasks покажет её задачи.`;
+}
+
 const HELP = [
   "<b>Команды бота «Поток»</b>",
   "",
@@ -119,6 +129,18 @@ export function createBot() {
   bot.command("start", async (ctx) => {
     const payload = ctx.match?.trim();
     const tgId = String(ctx.from?.id ?? "");
+
+    // In a group: ?startgroup=<code> adds the bot and links the chat to a board.
+    if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
+      if (!payload) {
+        await ctx.reply(
+          "Чтобы привязать группу к доске, на доске в приложении нажмите «Подключить Telegram-группу». Команды — /help",
+        );
+        return;
+      }
+      await ctx.reply(await linkChatToBoard(String(ctx.chat.id), payload));
+      return;
+    }
 
     if (!payload) {
       await ctx.reply(
@@ -172,26 +194,9 @@ export function createBot() {
 
   bot.command("link", async (ctx) => {
     if (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup") {
-      return ctx.reply("Команду /link нужно отправлять в групповом чате.");
+      return ctx.reply("Команду /link нужно отправлять в групповом чате (где есть бот).");
     }
-    const boardId = verifyBoardLinkCode(ctx.match?.trim() ?? "");
-    if (!boardId) return ctx.reply("Неверный код. Скопируйте код подключения на доске в приложении.");
-
-    const board = await prisma.board.findUnique({
-      where: { id: boardId },
-      select: { id: true, name: true, regionId: true },
-    });
-    if (!board) return ctx.reply("Доска не найдена.");
-
-    const user = await userByTg(ctx);
-    if (!user || !(await canManageBoard(user, board))) {
-      return ctx.reply("Привязывать группу может директор или регионал этой доски.");
-    }
-
-    const chatId = String(ctx.chat.id);
-    await prisma.board.updateMany({ where: { telegramChatId: chatId }, data: { telegramChatId: null } });
-    await prisma.board.update({ where: { id: board.id }, data: { telegramChatId: chatId } });
-    await ctx.reply(`Группа привязана к доске «${board.name}». /tasks покажет её задачи.`);
+    await ctx.reply(await linkChatToBoard(String(ctx.chat.id), ctx.match?.trim() ?? ""));
   });
 
   bot.command("unlink", async (ctx) => {

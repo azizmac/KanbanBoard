@@ -37,7 +37,7 @@ export function BoardView({
   regions: { id: string; name: string }[];
   memberNames: string[];
   canCreate: boolean;
-  tgLink: { code: string; botUsername: string } | null;
+  tgLink: { code: string; botUsername: string; linked: boolean } | null;
 }) {
   const [columns, setColumns] = useState<ColumnData[]>(board.columns);
   const columnsRef = useRef<ColumnData[]>(board.columns);
@@ -223,7 +223,13 @@ export function BoardView({
             />
           </div>
           {tgLink && (
-            <BoardTelegramButton code={tgLink.code} botUsername={tgLink.botUsername} boardName={board.name} />
+            <BoardTelegramButton
+              code={tgLink.code}
+              botUsername={tgLink.botUsername}
+              boardName={board.name}
+              boardId={board.id}
+              linked={tgLink.linked}
+            />
           )}
           <button
             onClick={newTask}

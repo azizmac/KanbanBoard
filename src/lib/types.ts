@@ -26,6 +26,7 @@ export type BoardData = {
   id: string;
   name: string;
   color: string;
+  telegramChatId: string | null;
   columns: ColumnData[];
 };
 

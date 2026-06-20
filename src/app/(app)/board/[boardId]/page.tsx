@@ -33,7 +33,9 @@ export default async function BoardPage({
 
   const botUsername = process.env.TELEGRAM_BOT_USERNAME;
   const tgLink =
-    canCreate && botUsername ? { code: makeBoardLinkCode(board.id), botUsername } : null;
+    canCreate && botUsername
+      ? { code: makeBoardLinkCode(board.id), botUsername, linked: Boolean(board.telegramChatId) }
+      : null;
 
   return (
     <BoardView
