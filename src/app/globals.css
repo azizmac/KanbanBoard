@@ -119,3 +119,13 @@ body {
 .dragging {
   opacity: 0.4;
 }
+
+/* Login brand-panel motion: slowly drifting glow orbs */
+@keyframes floatA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-26px, 20px) scale(1.08); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(22px, -18px) scale(1.06); }
+}

@@ -55,8 +55,12 @@ export default async function LoginPage({
       {/* Brand panel */}
       <div className="relative flex flex-col justify-between overflow-hidden bg-[var(--color-sidebar)] px-7 py-10 md:px-12 md:py-12">
         <div
-          className="pointer-events-none absolute -right-24 -top-20 h-[360px] w-[360px] rounded-full opacity-50"
-          style={{ background: "radial-gradient(circle, var(--color-accent), transparent 70%)" }}
+          className="pointer-events-none absolute -right-24 -top-20 h-[360px] w-[360px] rounded-full opacity-50 [animation:floatA_9s_ease-in-out_infinite]"
+          style={{ background: "radial-gradient(circle, #D97757, transparent 70%)" }}
+        />
+        <div
+          className="pointer-events-none absolute -left-20 bottom-[-60px] h-[300px] w-[300px] rounded-full opacity-40 [animation:floatB_11s_ease-in-out_infinite]"
+          style={{ background: "radial-gradient(circle, #7B5CE6, transparent 70%)" }}
         />
         <div className="relative">
           <LogoLockup tone="dark" size={30} />

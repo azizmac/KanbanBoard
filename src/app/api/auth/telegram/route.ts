@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   if (linked) {
     if (!linked.active) redirect("/login?error=disabled");
     await createSession(linked.id);
-    redirect("/board");
+    redirect("/home");
   }
 
   // 2) Pre-added by an admin (matching @username, not yet linked) → link & sign in.
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (byUsername) {
       await prisma.user.update({ where: { id: byUsername.id }, data: { telegramId } });
       await createSession(byUsername.id);
-      redirect("/board");
+      redirect("/home");
     }
   }
 
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       data: { telegramId, username: tgUsername, name, role: "ADMIN" },
     });
     await createSession(owner.id);
-    redirect("/board");
+    redirect("/home");
   }
 
   // 4) Self-provision: a valid invite link, or globally-open signup.
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     }
     if (inviteTok) store.delete("kanban_invite");
     await createSession(user.id);
-    redirect("/board");
+    redirect("/home");
   }
 
   // Otherwise: not a known team member.

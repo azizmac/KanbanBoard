@@ -38,8 +38,13 @@ export default async function ProfilePage() {
 
   return (
     <div className="pb-10">
-      {/* Cover */}
-      <div className="h-[120px] bg-[linear-gradient(120deg,#5546E0,#7B5CE6_60%,#A78BFA)] sm:h-[120px]" />
+      {/* Cover — dark graphite with a terracotta glow (light avatar reads well) */}
+      <div className="relative h-[120px] overflow-hidden bg-[linear-gradient(120deg,#262320,#3A332D_55%,#4A3F38)] sm:h-[120px]">
+        <div
+          className="absolute -right-8 -top-10 h-52 w-52 rounded-full opacity-[0.38]"
+          style={{ background: "radial-gradient(circle, #D97757, transparent 70%)" }}
+        />
+      </div>
 
       <div className="mx-auto max-w-4xl px-5">
         {/* Header — avatar overlaps the cover; name stays below it */}

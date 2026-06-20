@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+function IconHome() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+    </svg>
+  );
+}
 function IconBoard() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="3" width="7" height="18" rx="1.5" />
       <rect x="14" y="3" width="7" height="11" rx="1.5" />
-    </svg>
-  );
-}
-function IconMine() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M9 11l3 3L22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
   );
 }
@@ -72,8 +72,8 @@ function IconDashboard() {
 export function MobileTabBar({ isAdmin, isRegional }: { isAdmin: boolean; isRegional: boolean }) {
   const pathname = usePathname();
   const items = [
+    { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
-    { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
     { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
     // Leadership gets Сводка in the team slot (they reach the team via Админка).
     ...(isAdmin || isRegional

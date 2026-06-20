@@ -6,6 +6,14 @@ import { Avatar } from "./Avatar";
 import { LogoIcon } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 
+function IconHome() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+    </svg>
+  );
+}
 function IconBoard() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -86,6 +94,7 @@ export function Sidebar({
   const pathname = usePathname();
 
   const items = [
+    { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
     { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
     { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
