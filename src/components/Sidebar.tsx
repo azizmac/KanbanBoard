@@ -62,6 +62,14 @@ function IconDashboard() {
     </svg>
   );
 }
+function IconTemplate() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M9 9v12" />
+    </svg>
+  );
+}
 
 export function Sidebar({
   name,
@@ -80,7 +88,10 @@ export function Sidebar({
     { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
     { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
     ...(isAdmin || isRegional
-      ? [{ href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] }]
+      ? [
+          { href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] },
+          { href: "/templates", label: "Шаблоны", icon: <IconTemplate />, match: ["/templates"] },
+        ]
       : []),
     ...(isAdmin
       ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }]

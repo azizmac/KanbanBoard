@@ -32,7 +32,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-[22px] font-bold text-[var(--color-ink)]">Сводка</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-[22px] font-bold text-[var(--color-ink)]">Сводка</h1>
+        <Link href="/templates" className="shrink-0 text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+          Шаблоны →
+        </Link>
+      </div>
       <p className="mt-1 text-[13.5px] text-[var(--color-muted)]">
         {isDirector(user) ? "По всем доскам" : "По вашим регионам"}
       </p>

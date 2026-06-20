@@ -46,6 +46,8 @@ model User {
   notifications Notification[]
   activities    Activity[]
   pushSubscriptions PushSubscription[]
+  templatesCreated    TaskTemplate[] @relation("TemplateCreator")
+  templateAssignments TaskTemplate[] @relation("TemplateAssignee")
 
   // org hierarchy: regions a (regional) manager runs + groups the user belongs to
   managedRegions Region[] @relation("RegionManagers")
@@ -115,6 +117,7 @@ model Board {
   createdAt DateTime @default(now())
   columns   Column[]
   tags      Tag[]
+  templates TaskTemplate[]
 
   // org: the region this board lives in, and the access groups attached to it
   regionId String?
@@ -315,4 +318,40 @@ model PushConfig {
   publicKey  String
   privateKey String
   createdAt  DateTime @default(now())
+}
+
+// ----- Task templates + recurrence -----
+
+// A reusable task blueprint. With a recurrence set, the bot creates a task from
+// it on schedule; without one, it's just a quick-create template.
+model TaskTemplate {
+  id          String   @id @default(cuid())
+  name        String // template name, e.g. "Еженедельный отчёт"
+  title       String // title of the task it creates
+  description String?
+  priority    Priority @default(NORMAL)
+
+  boardId    String
+  board      Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  columnId   String? // null = board's first column
+  assigneeId String?
+  assignee   User?   @relation("TemplateAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  checklist String[] // checklist item texts
+  tags      String[] // tag names
+  dueInDays Int? // if set, created task gets dueDate = now + N days
+
+  // recurrence — null means "manual template only"
+  recurrence  String? // "daily" | "weekly" | "monthly"
+  weekday     Int? // 1-7 (Mon..Sun) for weekly
+  monthday    Int? // 1-31 for monthly
+  hour        Int     @default(9)
+  active      Boolean @default(true)
+  lastRunDate String? // "YYYY-MM-DD" of last auto-creation (dedup)
+
+  creatorId String
+  creator   User     @relation("TemplateCreator", fields: [creatorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([boardId])
 }

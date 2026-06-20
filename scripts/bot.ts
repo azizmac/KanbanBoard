@@ -7,6 +7,7 @@
 import "dotenv/config";
 import { BOT_COMMANDS, buildTaskListView, createBot } from "../src/lib/bot";
 import { prisma } from "../src/lib/prisma";
+import { instantiateTemplate } from "../src/lib/templates";
 
 const bot = createBot();
 if (!bot) {
@@ -139,6 +140,44 @@ function startHeartbeatLoop() {
   setInterval(beat, 3 * 60 * 1000);
 }
 
+// ---- Recurring tasks (templates with a schedule) -------------------------
+function localDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Create tasks from any recurring templates due this hour (once per day). */
+async function runDueTemplates() {
+  const now = new Date(); // bot container runs in Europe/Moscow
+  const today = localDate(now);
+  const wd = now.getDay(); // 0=Sun..6=Sat
+  const weekday = wd === 0 ? 7 : wd; // → 1=Mon..7=Sun
+  const monthday = now.getDate();
+
+  const due = await prisma.taskTemplate.findMany({
+    where: { active: true, recurrence: { not: null }, hour: now.getHours(), NOT: { lastRunDate: today } },
+  });
+
+  for (const t of due) {
+    const match =
+      t.recurrence === "daily" ||
+      (t.recurrence === "weekly" && t.weekday === weekday) ||
+      (t.recurrence === "monthly" && t.monthday === monthday);
+    if (!match) continue;
+    try {
+      const taskId = await instantiateTemplate(t, t.creatorId);
+      await prisma.taskTemplate.update({ where: { id: t.id }, data: { lastRunDate: today } });
+      if (taskId) console.log(`[recurring] created «${t.title}» from template ${t.name}`);
+    } catch (e) {
+      console.error("[recurring]", t.id, e instanceof Error ? e.message : e);
+    }
+  }
+}
+
+function startRecurringLoop() {
+  void runDueTemplates().catch((e) => console.error("[recurring]", e)); // catch up on restart
+  setInterval(() => void runDueTemplates().catch((e) => console.error("[recurring]", e)), 15 * 60 * 1000);
+}
+
 async function pollLoop() {
   const api = bot!.api;
   let offset = 0;
@@ -177,6 +216,7 @@ async function main() {
   startReminderLoop();
   startMonitorLoop();
   startHeartbeatLoop();
+  startRecurringLoop();
   console.log("[bot] long-polling (timeout=25) via relay…");
   await pollLoop();
 }
