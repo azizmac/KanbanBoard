@@ -53,7 +53,7 @@ export function BoardTelegramButton({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[44px] z-30 w-[340px] rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-4 shadow-[0_10px_30px_rgba(20,20,20,0.14)]">
+        <div className="absolute right-0 top-[44px] z-30 w-[340px] max-w-[88vw] rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-4 shadow-[0_10px_30px_rgba(20,20,20,0.14)]">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-[var(--color-ink)]">Telegram-группа</p>
             <span

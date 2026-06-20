@@ -245,7 +245,20 @@ export function BoardView({
 
       {/* ---- Mobile header + column pills ---- */}
       <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 pt-3 pb-2.5 sm:hidden">
-        <BoardSwitcher current={board} boards={boards} regions={regions} canCreate={canCreate} />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <BoardSwitcher current={board} boards={boards} regions={regions} canCreate={canCreate} />
+          </div>
+          {tgLink && (
+            <BoardTelegramButton
+              code={tgLink.code}
+              botUsername={tgLink.botUsername}
+              boardName={board.name}
+              boardId={board.id}
+              linked={tgLink.linked}
+            />
+          )}
+        </div>
         <div className="scroll-thin -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
           {columns.map((c) => {
             const on = c.id === activeColumnId;
