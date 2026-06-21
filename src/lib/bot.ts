@@ -11,6 +11,7 @@ import {
 import { verifyBoardLinkCode } from "./board-link";
 import { prisma } from "./prisma";
 import { escapeHtml } from "./telegram";
+import { resolveTelegramLogin } from "./tg-auth";
 import { verifyLinkToken } from "./telegram-link";
 import { syncAvatar } from "./tg-avatar";
 
@@ -237,6 +238,36 @@ export function createBot() {
         return;
       }
       await ctx.reply(await linkChatToBoard(String(ctx.chat.id), payload));
+      return;
+    }
+
+    // Website sign-in via deep-link (RU-friendly — no telegram.org widget). The
+    // browser opened t.me/<bot>?start=login_<nonce>; resolve who this is and flip
+    // the nonce so the waiting tab can mint a session.
+    if (payload && /^login_[0-9a-f]{32}$/.test(payload)) {
+      const nonce = payload.slice(6);
+      const row = await prisma.loginNonce.findUnique({ where: { nonce } });
+      if (!row || row.status !== "pending" || row.expiresAt < new Date()) {
+        await ctx.reply("Ссылка для входа истекла. Обновите страницу входа и попробуйте снова.");
+        return;
+      }
+      const name = [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(" ").trim();
+      const result = await resolveTelegramLogin(
+        { telegramId: tgId, username: ctx.from?.username ?? null, name },
+        row.inviteToken,
+      );
+      if (!result.ok) {
+        await prisma.loginNonce.update({ where: { nonce }, data: { status: "denied", error: result.error } });
+        await ctx.reply(
+          result.error === "disabled"
+            ? "Ваш аккаунт отключён. Обратитесь к администратору."
+            : "Вас ещё нет в команде — попросите ссылку-приглашение у администратора.",
+        );
+        return;
+      }
+      await prisma.loginNonce.update({ where: { nonce }, data: { status: "ready", userId: result.userId } });
+      void syncAvatar(result.userId).catch(() => {}); // pull their Telegram photo
+      await ctx.reply("Готово! ✅ Вернитесь во вкладку браузера — вход выполнен.");
       return;
     }
 

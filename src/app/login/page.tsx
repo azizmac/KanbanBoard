@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { roleLabels, telegramEnabled } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { devLoginAction } from "./actions";
-import TelegramLoginButton from "./TelegramLoginButton";
+import TelegramLogin from "./TelegramLogin";
 
 const ERRORS: Record<string, string> = {
   telegram: "Не удалось проверить вход через Telegram.",
@@ -102,17 +102,17 @@ export default async function LoginPage({
           {showTelegram && (
             <div className="mt-6">
               {showDev ? (
-                <div className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[14px] bg-[#229ED9] text-base font-semibold text-white opacity-60">
-                  <TelegramIcon />
-                  Войти через Telegram
-                </div>
+                <>
+                  <div className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[14px] bg-[#229ED9] text-base font-semibold text-white opacity-60">
+                    <TelegramIcon />
+                    Войти через Telegram
+                  </div>
+                  <p className="mt-2 text-center text-[12px] text-[var(--color-faint)]">
+                    Telegram-вход активен в production (с настроенным ботом)
+                  </p>
+                </>
               ) : (
-                <TelegramLoginButton botUsername={process.env.TELEGRAM_BOT_USERNAME ?? ""} />
-              )}
-              {showDev && (
-                <p className="mt-2 text-center text-[12px] text-[var(--color-faint)]">
-                  Telegram-вход активен в production (с настроенным доменом бота)
-                </p>
+                <TelegramLogin />
               )}
             </div>
           )}
@@ -154,7 +154,7 @@ export default async function LoginPage({
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             <span className="text-[12.5px] leading-relaxed text-[var(--color-muted)]">
-              Доступ к доскам выдаёт администратор после первого входа.
+              После входа у вас появятся личные доски. Командные открывает администратор.
             </span>
           </div>
         </div>

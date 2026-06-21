@@ -361,3 +361,21 @@ model TaskTemplate {
 
   @@index([boardId])
 }
+
+// One-time nonce for "login via bot deep-link" — the RU-friendly sign-in that
+// doesn't depend on telegram.org (the official widget is blocked there). The
+// browser creates a row, opens t.me/<bot>?start=login_<nonce>; the bot resolves
+// the Telegram user and flips status to "ready"; the browser polls and the
+// status endpoint then mints the session. Short-lived + single-use.
+model LoginNonce {
+  id          String   @id @default(cuid())
+  nonce       String   @unique
+  inviteToken String? // carried from the kanban_invite cookie so role/group survive
+  userId      String? // set by the bot once the Telegram user is resolved
+  status      String   @default("pending") // pending | ready | used | denied
+  error       String? // "disabled" | "notlinked" when denied
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
