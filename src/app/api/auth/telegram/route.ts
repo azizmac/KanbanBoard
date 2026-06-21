@@ -56,7 +56,10 @@ export async function GET(req: NextRequest) {
   const store = await cookies();
   const inviteTok = store.get("kanban_invite")?.value;
   const invite = inviteTok ? verifyInviteToken(inviteTok) : null;
-  const openSignup = process.env.OPEN_SIGNUP === "true";
+  // Open signup is ON by default: anyone can log in and gets a basic MEMBER
+  // account (sees only their own boards + ones they're added to). Set
+  // OPEN_SIGNUP=false to require an invite link instead.
+  const openSignup = process.env.OPEN_SIGNUP !== "false";
   if (invite || openSignup) {
     // keep @username only if it's not already taken
     let username: string | null = null;

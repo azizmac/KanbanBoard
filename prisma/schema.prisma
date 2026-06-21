@@ -53,6 +53,7 @@ model User {
   // org hierarchy: regions a (regional) manager runs + groups the user belongs to
   managedRegions Region[] @relation("RegionManagers")
   groups         Group[]  @relation("GroupMembers")
+  ownedBoards    Board[]  @relation("OwnedBoards")
 
   @@index([managerId])
 }
@@ -124,6 +125,10 @@ model Board {
   regionId String?
   region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
   groups   Group[] @relation("BoardGroups")
+
+  // personal boards: a self-signup member owns the boards they create
+  ownerId String?
+  owner   User?   @relation("OwnedBoards", fields: [ownerId], references: [id], onDelete: SetNull)
 
   // a Telegram group chat linked to this board (for /tasks digests)
   telegramChatId String? @unique

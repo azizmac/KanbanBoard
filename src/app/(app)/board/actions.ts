@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canCreateBoardInRegion, canManageBoard, isDirector, isRegional } from "@/lib/access";
+import { canCreateBoardInRegion, canManageBoard } from "@/lib/access";
 import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -72,18 +72,16 @@ const boardSchema = z.object({
   regionId: z.string().nullable().optional(),
 });
 
-// Directors create boards in any region; regionals only in their own region.
+// Anyone can create a personal board (no region). A board in a region needs
+// rights for that region (directors anywhere, regionals in theirs).
 export async function createBoard(input: z.input<typeof boardSchema>) {
   const user = await requireUser();
-  if (!isDirector(user) && !isRegional(user)) {
-    return { ok: false as const, error: "Недостаточно прав" };
-  }
   const parsed = boardSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Ошибка" };
   }
   const regionId = parsed.data.regionId ?? null;
-  if (!(await canCreateBoardInRegion(user, regionId))) {
+  if (regionId && !(await canCreateBoardInRegion(user, regionId))) {
     return { ok: false as const, error: "Нет прав на создание доски в этом регионе" };
   }
 
@@ -92,6 +90,7 @@ export async function createBoard(input: z.input<typeof boardSchema>) {
       name: parsed.data.name,
       color: parsed.data.color ?? "iris",
       regionId,
+      ownerId: user.id, // the creator owns it (esp. personal boards)
       columns: { create: DEFAULT_COLUMNS.map((name, position) => ({ name, position })) },
     },
   });
@@ -102,7 +101,7 @@ export async function createBoard(input: z.input<typeof boardSchema>) {
 
 export async function unlinkBoardTelegram(boardId: string) {
   const user = await requireUser();
-  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true } });
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } });
   if (!board || !(await canManageBoard(user, board))) {
     return { ok: false as const, error: "Недостаточно прав" };
   }

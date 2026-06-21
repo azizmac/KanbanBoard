@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import { isDirector, isRegional } from "@/lib/access";
+import { canManageBoard } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { makeBoardLinkCode } from "@/lib/board-link";
 import { getBoard, getBoardOptions } from "@/lib/board-data";
 import { listManageableRegions } from "@/lib/org-data";
+import { prisma } from "@/lib/prisma";
 import { BoardView } from "../BoardView";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +16,19 @@ export default async function BoardPage({
 }) {
   const { boardId } = await params;
   const user = await requireUser();
-  const canCreate = isDirector(user) || isRegional(user);
-  const [board, boards, regions] = await Promise.all([
+  const [board, boards, regions, meta] = await Promise.all([
     getBoard(user, boardId),
     getBoardOptions(user),
-    canCreate ? listManageableRegions(user) : Promise.resolve([]),
+    listManageableRegions(user), // [] for staff → they create personal (region-less) boards
+    prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } }),
   ]);
 
   if (!board) notFound();
+
+  // Everyone can create a board (staff → personal). Telegram linking is gated to
+  // whoever can manage THIS board.
+  const canCreate = true;
+  const canManage = meta ? await canManageBoard(user, meta) : false;
 
   // Board participants = distinct assignees across the board.
   const memberNames = [
@@ -33,7 +39,7 @@ export default async function BoardPage({
 
   const botUsername = process.env.TELEGRAM_BOT_USERNAME;
   const tgLink =
-    canCreate && botUsername
+    canManage && botUsername
       ? { code: makeBoardLinkCode(board.id), botUsername, linked: Boolean(board.telegramChatId) }
       : null;
 

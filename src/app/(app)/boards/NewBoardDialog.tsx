@@ -121,7 +121,7 @@ export function NewBoardDialog({
           </>
         ) : (
           <p className="mt-4 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3 py-2 text-[13px] text-[var(--color-muted)]">
-            Нет доступных регионов. Создайте регион в «Управление доступом → Регионы».
+            Это будет ваша личная доска — её видите только вы.
           </p>
         )}
 

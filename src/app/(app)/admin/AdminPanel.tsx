@@ -64,6 +64,7 @@ export function AdminPanel({
   const [adding, setAdding] = useState(false);
   const [invite, setInvite] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteRole, setInviteRole] = useState<Role>("MEMBER");
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -98,10 +99,11 @@ export function AdminPanel({
     });
   }
 
-  function genInvite() {
+  function genInvite(role: Role = "MEMBER") {
     setInviteCopied(false);
+    setInviteRole(role);
     startTransition(async () => {
-      const res = await createInviteLink("MEMBER");
+      const res = await createInviteLink(role);
       if (res.ok) {
         setInvite(res.url);
         try {
@@ -160,7 +162,7 @@ export function AdminPanel({
             Регионы и группы
           </Link>
           <button
-            onClick={genInvite}
+            onClick={() => genInvite(inviteRole)}
             className="flex h-10 items-center gap-2 rounded-[11px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -184,17 +186,35 @@ export function AdminPanel({
       </div>
 
       {invite && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3.5 py-3">
-          <span className="text-sm font-medium text-[var(--color-ink)]">
-            Ссылка-приглашение {inviteCopied && <span className="text-[var(--color-success)]">· скопирована</span>}
-          </span>
+        <div className="mt-4 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3.5 py-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Ссылка-приглашение</span>
+            {inviteCopied && <span className="text-xs text-[var(--color-success)]">· скопирована</span>}
+            <span className="ml-auto flex gap-1.5">
+              {(["MEMBER", "MANAGER", "ADMIN"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => genInvite(r)}
+                  className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium transition ${
+                    inviteRole === r
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "bg-[var(--color-line)] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                  }`}
+                >
+                  {roleLabels[r]}
+                </button>
+              ))}
+            </span>
+          </div>
           <input
             readOnly
             value={invite}
             onFocus={(e) => e.currentTarget.select()}
-            className="min-w-0 flex-1 rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 py-1.5 font-mono text-[12.5px] text-[var(--color-muted)] outline-none"
+            className="w-full rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 py-1.5 font-mono text-[12.5px] text-[var(--color-muted)] outline-none"
           />
-          <span className="text-xs text-[var(--color-faint)]">даёт роль «Участник», действует 7 дней</span>
+          <p className="mt-1.5 text-xs text-[var(--color-faint)]">
+            Даёт роль «{roleLabels[inviteRole]}», действует 7 дней. Войти можно с любого устройства через Telegram.
+          </p>
         </div>
       )}
 

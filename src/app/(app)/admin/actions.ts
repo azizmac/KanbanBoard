@@ -35,7 +35,7 @@ async function currentAdmin() {
 
 /** Generate a shareable invite link. Opening it lets the next Telegram login
  *  self-provision with the given role (default MEMBER = basic access). */
-export async function createInviteLink(role: "MEMBER" | "MANAGER" = "MEMBER") {
+export async function createInviteLink(role: "MEMBER" | "MANAGER" | "ADMIN" = "MEMBER") {
   const admin = await currentAdmin();
   if (!admin) return { ok: false as const, error: "Недостаточно прав" };
 

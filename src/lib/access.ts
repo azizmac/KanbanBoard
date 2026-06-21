@@ -26,20 +26,22 @@ export function canManageOrg(u: Actor) {
 export async function visibleBoardWhere(user: Actor): Promise<Prisma.BoardWhereInput> {
   if (isDirector(user)) return {}; // everything
 
-  const inMyGroups: Prisma.BoardWhereInput = {
-    groups: { some: { members: { some: { id: user.id } } } },
-  };
+  // own (personal) boards + boards shared via a group the user belongs to
+  const base: Prisma.BoardWhereInput[] = [
+    { ownerId: user.id },
+    { groups: { some: { members: { some: { id: user.id } } } } },
+  ];
 
   if (isRegional(user)) {
     const regions = await prisma.region.findMany({
       where: { managers: { some: { id: user.id } } },
       select: { id: true },
     });
-    return { OR: [{ regionId: { in: regions.map((r) => r.id) } }, inMyGroups] };
+    return { OR: [{ regionId: { in: regions.map((r) => r.id) } }, ...base] };
   }
 
-  // staff
-  return inMyGroups;
+  // staff: only their own boards + boards they've been added to
+  return { OR: base };
 }
 
 export async function canAccessBoard(user: Actor, boardId: string): Promise<boolean> {
@@ -86,8 +88,12 @@ export async function canCreateBoardInRegion(user: Actor, regionId: string | nul
 }
 
 /** Can the user manage a given board (settings, delete, groups)? */
-export async function canManageBoard(user: Actor, board: { regionId: string | null }): Promise<boolean> {
+export async function canManageBoard(
+  user: Actor,
+  board: { regionId: string | null; ownerId?: string | null },
+): Promise<boolean> {
   if (isDirector(user)) return true;
+  if (board.ownerId && board.ownerId === user.id) return true; // own personal board
   if (!isRegional(user)) return false;
   return canCreateBoardInRegion(user, board.regionId);
 }

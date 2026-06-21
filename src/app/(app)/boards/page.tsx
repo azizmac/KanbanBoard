@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AvatarStack } from "@/components/Avatar";
-import { isDirector, isRegional } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { getBoardSummaries } from "@/lib/board-data";
 import { pluralBoards, pluralTasks } from "@/lib/format";
@@ -17,8 +16,7 @@ export default async function BoardsPage() {
     getBoardSummaries(user),
     listManageableRegions(user),
   ]);
-  const canCreate = isDirector(user) || isRegional(user);
-
+  // Everyone can create a board (staff get personal, region-less boards).
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-7 sm:px-9">
       <div className="flex items-end justify-between gap-4">
@@ -26,17 +24,14 @@ export default async function BoardsPage() {
           <h1 className="text-[25px] font-bold tracking-[-0.03em]">Доски</h1>
           <p className="mt-1 text-sm text-[var(--color-muted)]">{pluralBoards(boards.length)}</p>
         </div>
-        {canCreate && <CreateBoard variant="button" regions={regions} />}
+        <CreateBoard variant="button" regions={regions} />
       </div>
 
       <div className="mt-7 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
         {boards.map((b) => (
           <BoardCard key={b.id} board={b} />
         ))}
-        {canCreate && <CreateBoard variant="tile" regions={regions} />}
-        {boards.length === 0 && !canCreate && (
-          <p className="text-sm text-[var(--color-muted)]">Вам пока не открыли ни одной доски.</p>
-        )}
+        <CreateBoard variant="tile" regions={regions} />
       </div>
     </div>
   );

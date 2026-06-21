@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 // `https://<app>/join/<token>`; opening it lets the next Telegram login
 // self-provision with the embedded role. No DB row needed.
 
-type InviteRole = "MEMBER" | "MANAGER";
+type InviteRole = "MEMBER" | "MANAGER" | "ADMIN";
 
 function secret() {
   return process.env.SESSION_SECRET || "insecure-dev-secret";
@@ -27,7 +27,7 @@ export function verifyInviteToken(token: string): { role: InviteRole; groupId: s
     const [role, expStr, groupId] = Buffer.from(payload, "base64url").toString("utf8").split("|");
     const exp = Number(expStr);
     if (!exp || Date.now() > exp) return null;
-    if (role !== "MEMBER" && role !== "MANAGER") return null;
+    if (role !== "MEMBER" && role !== "MANAGER" && role !== "ADMIN") return null;
     return { role, groupId: groupId || null };
   } catch {
     return null;
