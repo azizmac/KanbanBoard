@@ -329,7 +329,7 @@ export function TaskDetailClient({
 
           {/* Checklist */}
           <div className="mt-7">
-            <Checklist taskId={task.id} initialItems={task.checklist} />
+            <Checklist taskId={task.id} initialItems={task.checklist} team={team} />
           </div>
 
           {/* Attachments */}

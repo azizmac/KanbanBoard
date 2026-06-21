@@ -58,6 +58,7 @@ model User {
   pushSubscriptions PushSubscription[]
   auditActions  AuditLog[] @relation("AuditActor")  // admin actions this user performed
   auditTargeted AuditLog[] @relation("AuditTarget")  // admin actions taken on this user
+  subtaskAssignments ChecklistItem[] @relation("SubtaskAssignee")
   templatesCreated    TaskTemplate[] @relation("TemplateCreator")
   templateAssignments TaskTemplate[] @relation("TemplateAssignee")
 
@@ -246,14 +247,17 @@ model Tag {
   @@index([boardId])
 }
 
-// A single checklist row inside a task.
+// A subtask (checklist row) inside a task — carries its own assignee + due date.
 model ChecklistItem {
-  id       String  @id @default(cuid())
-  text     String
-  done     Boolean @default(false)
-  position Int
-  taskId   String
-  task     Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  text       String
+  done       Boolean   @default(false)
+  position   Int
+  dueDate    DateTime?
+  assigneeId String?
+  assignee   User?     @relation("SubtaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  taskId     String
+  task       Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
 }

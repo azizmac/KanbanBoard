@@ -255,7 +255,10 @@ export async function addChecklistItem(taskId: string, text: string) {
     data: { taskId, text: parsed.data, position: count },
   });
   revalidatePath(`/task/${taskId}`);
-  return { ok: true as const, item: { id: item.id, text: item.text, done: item.done } };
+  return {
+    ok: true as const,
+    item: { id: item.id, text: item.text, done: item.done, dueDate: null, assignee: null },
+  };
 }
 
 export async function toggleChecklistItem(itemId: string, done: boolean) {
@@ -271,6 +274,35 @@ export async function deleteChecklistItem(itemId: string) {
   const item = await prisma.checklistItem.findUnique({ where: { id: itemId } });
   if (!item) return { ok: false as const };
   await prisma.checklistItem.delete({ where: { id: itemId } });
+  revalidatePath(`/task/${item.taskId}`);
+  return { ok: true as const };
+}
+
+export async function setChecklistAssignee(itemId: string, assigneeId: string | null) {
+  const user = await requireUser();
+  const item = await prisma.checklistItem.update({
+    where: { id: itemId },
+    data: { assigneeId: assigneeId || null },
+    include: { task: { select: { id: true, title: true } } },
+  });
+  if (assigneeId && assigneeId !== user.id) {
+    await notify({
+      userId: assigneeId,
+      type: "ASSIGNED",
+      message: `Подзадача «${item.text}» — ${item.task.title}`,
+      taskId: item.task.id,
+    });
+  }
+  revalidatePath(`/task/${item.taskId}`);
+  return { ok: true as const };
+}
+
+export async function setChecklistDue(itemId: string, dueDate: string | null) {
+  await requireUser();
+  const item = await prisma.checklistItem.update({
+    where: { id: itemId },
+    data: { dueDate: dueDate ? new Date(dueDate) : null },
+  });
   revalidatePath(`/task/${item.taskId}`);
   return { ok: true as const };
 }

@@ -64,7 +64,16 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailData | nu
       creator: { select: { id: true, name: true } },
       assignee: { select: { id: true, name: true } },
       tags: { select: { id: true, name: true, color: true } },
-      checklist: { orderBy: { position: "asc" }, select: { id: true, text: true, done: true } },
+      checklist: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          text: true,
+          done: true,
+          dueDate: true,
+          assignee: { select: { id: true, name: true } },
+        },
+      },
       activities: {
         orderBy: { createdAt: "asc" },
         include: { actor: { select: { id: true, name: true } } },
@@ -97,7 +106,13 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailData | nu
     updatedAt: task.updatedAt.toISOString(),
     archived: Boolean(task.archivedAt),
     tags: task.tags,
-    checklist: task.checklist,
+    checklist: task.checklist.map((c) => ({
+      id: c.id,
+      text: c.text,
+      done: c.done,
+      dueDate: c.dueDate ? c.dueDate.toISOString() : null,
+      assignee: c.assignee,
+    })),
     activities: task.activities.map((a) => ({
       id: a.id,
       kind: a.kind,

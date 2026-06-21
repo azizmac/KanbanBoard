@@ -81,7 +81,13 @@ export type AttachmentData = {
   uploader: UserRef;
 };
 
-export type ChecklistItemData = { id: string; text: string; done: boolean };
+export type ChecklistItemData = {
+  id: string;
+  text: string;
+  done: boolean;
+  dueDate: string | null;
+  assignee: { id: string; name: string } | null;
+};
 
 export type ActivityData = {
   id: string;
