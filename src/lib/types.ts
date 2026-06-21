@@ -19,6 +19,8 @@ export type TaskCard = {
 export type ColumnData = {
   id: string;
   name: string;
+  done: boolean;
+  wipLimit: number | null;
   tasks: TaskCard[];
 };
 

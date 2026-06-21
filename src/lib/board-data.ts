@@ -68,6 +68,8 @@ export async function getBoard(user: Actor, boardId?: string): Promise<BoardData
     columns: board.columns.map((c) => ({
       id: c.id,
       name: c.name,
+      done: isDone(c.name),
+      wipLimit: c.wipLimit,
       tasks: c.tasks.map(toCard),
     })),
   };

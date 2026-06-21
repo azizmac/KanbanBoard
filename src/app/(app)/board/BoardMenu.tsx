@@ -5,8 +5,16 @@ import { useState, useTransition } from "react";
 import { deleteBoard } from "./actions";
 
 /** Board-level actions (kebab menu). Only rendered for users who can manage the
- *  board — currently just "delete board". */
-export function BoardMenu({ boardId, boardName }: { boardId: string; boardName: string }) {
+ *  board — configure columns + delete board. */
+export function BoardMenu({
+  boardId,
+  boardName,
+  onManageColumns,
+}: {
+  boardId: string;
+  boardName: string;
+  onManageColumns: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -42,6 +50,21 @@ export function BoardMenu({ boardId, boardName }: { boardId: string; boardName: 
       </button>
       {open && (
         <div className="absolute right-0 top-[44px] z-30 w-[210px] rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-1.5 shadow-[0_8px_28px_rgba(20,20,20,0.12)]">
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setOpen(false);
+              onManageColumns();
+            }}
+            className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-[13.5px] font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-surface-warm)]"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="5" height="16" rx="1" />
+              <rect x="10" y="4" width="5" height="16" rx="1" />
+              <rect x="17" y="4" width="4" height="10" rx="1" />
+            </svg>
+            Настроить колонки
+          </button>
           <button
             onMouseDown={(e) => e.preventDefault()}
             onClick={remove}

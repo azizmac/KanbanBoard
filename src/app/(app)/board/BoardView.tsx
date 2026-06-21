@@ -22,6 +22,7 @@ import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
 import { BoardMenu } from "./BoardMenu";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { BoardTelegramButton } from "./BoardTelegramButton";
+import { ColumnManager } from "./ColumnManager";
 import { ColumnView } from "./ColumnView";
 import { TaskCardContent } from "./TaskCardView";
 import { createTask, moveTask } from "./actions";
@@ -49,6 +50,7 @@ export function BoardView({
   const [addingColumnId, setAddingColumnId] = useState<string | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string>(board.columns[0]?.id ?? "");
   const [query, setQuery] = useState("");
+  const [columnsOpen, setColumnsOpen] = useState(false);
   const [, startTransition] = useTransition();
   const router = useRouter();
 
@@ -285,7 +287,9 @@ export function BoardView({
             </svg>
             Задача
           </button>
-          {canManage && <BoardMenu boardId={board.id} boardName={board.name} />}
+          {canManage && (
+            <BoardMenu boardId={board.id} boardName={board.name} onManageColumns={() => setColumnsOpen(true)} />
+          )}
         </div>
       </div>
 
@@ -304,7 +308,9 @@ export function BoardView({
               linked={tgLink.linked}
             />
           )}
-          {canManage && <BoardMenu boardId={board.id} boardName={board.name} />}
+          {canManage && (
+            <BoardMenu boardId={board.id} boardName={board.name} onManageColumns={() => setColumnsOpen(true)} />
+          )}
         </div>
         <div className="scroll-thin -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
           {columns.map((c) => {
@@ -373,6 +379,20 @@ export function BoardView({
           </svg>
         </button>
       </div>
+
+      {columnsOpen && (
+        <ColumnManager
+          boardId={board.id}
+          columns={columns.map((c) => ({
+            id: c.id,
+            name: c.name,
+            done: c.done,
+            wipLimit: c.wipLimit,
+            count: c.tasks.length,
+          }))}
+          onClose={() => setColumnsOpen(false)}
+        />
+      )}
     </div>
   );
 }

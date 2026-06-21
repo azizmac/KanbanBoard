@@ -148,6 +148,7 @@ model Column {
   id       String @id @default(cuid())
   name     String
   position Int // order of the column on the board
+  wipLimit Int? // optional work-in-progress cap (null = no limit)
   boardId  String
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks    Task[]

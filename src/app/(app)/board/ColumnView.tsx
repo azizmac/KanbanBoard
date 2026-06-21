@@ -26,7 +26,8 @@ export function ColumnView({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [title, setTitle] = useState("");
-  const done = column.name.includes("Готово");
+  const done = column.done;
+  const over = column.wipLimit != null && column.tasks.length > column.wipLimit;
   const setAdding = onAddingChange;
 
   function submit() {
@@ -44,7 +45,13 @@ export function ColumnView({
       <header className="flex items-center gap-2 px-1.5 py-2">
         <span className={`h-2 w-2 shrink-0 rounded-full ${columnDot(column.name)}`} />
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">{column.name}</h2>
-        <span className="font-mono text-xs text-[var(--color-faint)]">{column.tasks.length}</span>
+        <span
+          className={`font-mono text-xs ${over ? "font-semibold text-[var(--color-urgent)]" : "text-[var(--color-faint)]"}`}
+          title={column.wipLimit != null ? `Лимит WIP: ${column.wipLimit}` : undefined}
+        >
+          {column.tasks.length}
+          {column.wipLimit != null && `/${column.wipLimit}`}
+        </span>
         <button
           onClick={() => setAdding(!adding)}
           className="ml-auto grid h-6 w-6 place-items-center rounded-md text-[var(--color-faint)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
