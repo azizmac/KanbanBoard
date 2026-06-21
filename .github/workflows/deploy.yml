@@ -1,6 +1,7 @@
 name: Deploy to mini-PC
 
-# Push-to-deploy: a self-hosted runner ON the mini-PC rebuilds the images and
+# Push-to-deploy: a self-hosted runner ON the mini-PC verifies the code
+# (typecheck + unit tests) and, only if that passes, rebuilds the images and
 # (re)starts the stack via docker compose. Reuses the host's kanban-pg / kanban-minio.
 on:
   push:
@@ -12,7 +13,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: nothing deploys unless types + tests are green.
+  verify:
+    runs-on: [self-hosted, kanban]
+    env:
+      # prisma generate / tsc don't connect, but some tooling reads the var.
+      DATABASE_URL: postgresql://localhost:5432/verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install deps
+        shell: cmd
+        run: npm ci
+      - name: Generate Prisma client
+        shell: cmd
+        run: npx prisma generate
+      - name: Typecheck
+        shell: cmd
+        run: npx tsc --noEmit
+      - name: Unit tests
+        shell: cmd
+        run: npx vitest run
+
   deploy:
+    needs: verify
     runs-on: [self-hosted, kanban]
     env:
       # Avoid the Docker Desktop credential helper (fails in non-interactive
