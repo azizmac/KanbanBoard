@@ -83,11 +83,15 @@ model Region {
   managers  User[]   @relation("RegionManagers")
 }
 
-// Справочник должностей — admin-managed list of job titles. A user's `position`
-// string is set from this list.
+// Справочник должностей — admin-built catalog of job titles. Each position is
+// "constructed" with an access level (role tier it belongs to) and a colour;
+// access itself stays governed by User.role (single source of truth) — the level
+// here is organisational metadata + the default role suggested on assignment.
 model Position {
   id        String   @id @default(cuid())
   name      String   @unique
+  role      Role     @default(MEMBER) // access level this position belongs to
+  color     String   @default("gray") // tint key (see lib/tints)
   createdAt DateTime @default(now())
 }
 
