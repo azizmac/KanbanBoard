@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
-import { roleLabels } from "@/lib/constants";
+import { roleLabels, roleLabelsShort } from "@/lib/constants";
 import { addUser, createInviteLink, updateUser } from "./actions";
 
 type Role = "ADMIN" | "MANAGER" | "MEMBER";
@@ -49,7 +49,7 @@ function ShieldIcon({ className = "" }: { className?: string }) {
 const FILTERS: { key: "ALL" | Role; label: string }[] = [
   { key: "ALL", label: "Все" },
   { key: "ADMIN", label: "Админы" },
-  { key: "MANAGER", label: "Менеджеры" },
+  { key: "MANAGER", label: "Управляющие" },
   { key: "MEMBER", label: "Участники" },
 ];
 
@@ -162,7 +162,7 @@ export function AdminPanel({
             </span>
           </div>
           <p className="text-sm text-[var(--color-muted)]">
-            {counts.total} участников · {counts.admins} админ · {counts.managers} менеджера ·
+            {counts.total} участников · {counts.admins} директор · {counts.managers} управляющих ·
             <span className="ml-1">все видят все доски</span>
           </p>
         </div>
@@ -287,7 +287,7 @@ export function AdminPanel({
           <input className={ctl} placeholder="Должность" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
           <select className={ctl} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
             {assignableRoles.map((r) => (
-              <option key={r} value={r}>{roleLabels[r]}</option>
+              <option key={r} value={r}>{roleLabelsShort[r]}</option>
             ))}
           </select>
           <select className={ctl} value={form.managerId} onChange={(e) => setForm({ ...form, managerId: e.target.value })}>
@@ -359,7 +359,7 @@ export function AdminPanel({
               >
                 {ALL_ROLES.map((r) => (
                   <option key={r} value={r} disabled={!assignable.has(r)}>
-                    {roleLabels[r]}
+                    {roleLabelsShort[r]}
                   </option>
                 ))}
               </select>

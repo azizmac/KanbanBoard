@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { roleLabels } from "@/lib/constants";
+import { roleLabelsShort } from "@/lib/constants";
 import { tint } from "@/lib/tints";
 import {
   createGroup,
@@ -96,6 +96,7 @@ export function OrgPanel({
   const [newGroupRegion, setNewGroupRegion] = useState<string>(regions[0]?.id ?? "");
   const [newPosition, setNewPosition] = useState("");
   const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string>("ALL"); // "ALL" | "NONE" | regionId
 
   function genGroupInvite(groupId: string) {
     startTransition(async () => {
@@ -120,8 +121,16 @@ export function OrgPanel({
     });
   }
 
-  const userOpts: Opt[] = users.map((u) => ({ id: u.id, name: `${u.name} · ${roleLabels[u.role]}` }));
+  const userOpts: Opt[] = users.map((u) => ({ id: u.id, name: `${u.name} · ${roleLabelsShort[u.role]}` }));
   const regionName = (id: string | null) => regions.find((r) => r.id === id)?.name ?? "—";
+
+  const visibleGroups = groups.filter((g) =>
+    groupFilter === "ALL"
+      ? true
+      : groupFilter === "NONE"
+        ? g.regionId === null
+        : g.regionId === groupFilter,
+  );
 
   return (
     <div className="mx-auto max-w-[1080px] px-5 py-7 sm:px-9">
@@ -132,8 +141,9 @@ export function OrgPanel({
         </Link>
       </div>
       <p className="mb-6 text-sm text-[var(--color-muted)]">
-        Директора создают регионы и назначают регионалов. Регионал ведёт доски своего региона.
-        Доступ линейного персонала к доске — через группы, привязанные к этой доске.
+        Директора создают регионы и назначают региональных управляющих. Региональный управляющий
+        ведёт доски своего региона. Доступ линейного персонала к доске — через группы, привязанные
+        к этой доске.
       </p>
 
       {error && (
@@ -192,7 +202,7 @@ export function OrgPanel({
                 </div>
                 {canManageRegions && (
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-11">
-                    <span className="text-[12px] text-[var(--color-muted)]">Регионалы:</span>
+                    <span className="text-[12px] text-[var(--color-muted)]">Управляющие:</span>
                     <MultiSelect
                       all={userOpts}
                       selected={r.managerIds}
@@ -261,8 +271,25 @@ export function OrgPanel({
             Создать
           </button>
         </div>
+        {regions.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {[{ id: "ALL", name: "Все" }, ...regions.map((r) => ({ id: r.id, name: r.name })), { id: "NONE", name: "Без региона" }].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setGroupFilter(f.id)}
+                className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium transition ${
+                  groupFilter === f.id
+                    ? "bg-[var(--color-sidebar)] text-white"
+                    : "bg-[var(--color-surface-warm)] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                }`}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="space-y-2.5">
-          {groups.map((g) => {
+          {visibleGroups.map((g) => {
             const boardOpts: Opt[] = boards
               .filter((b) => !g.regionId || b.regionId === g.regionId)
               .map((b) => ({ id: b.id, name: b.name }));
@@ -310,7 +337,11 @@ export function OrgPanel({
               </div>
             );
           })}
-          {groups.length === 0 && <p className="text-sm text-[var(--color-muted)]">Групп пока нет.</p>}
+          {visibleGroups.length === 0 && (
+            <p className="text-sm text-[var(--color-muted)]">
+              {groups.length === 0 ? "Групп пока нет." : "В этом фильтре групп нет."}
+            </p>
+          )}
         </div>
       </section>
 

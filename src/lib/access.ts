@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 // ---- Role tiers ----
 // The Role enum is reused but relabeled as the org hierarchy:
 //   ADMIN   → Директор  (sees ALL boards, manages regions/roles)
-//   MANAGER → Регионал   (runs assigned region(s): boards, groups, invites)
+//   MANAGER → Региональный управляющий (runs assigned region(s): boards, groups, invites)
 //   MEMBER  → Линейный   (sees boards via group membership only)
 // See prisma/schema.prisma and docs/ACCESS.md.
 

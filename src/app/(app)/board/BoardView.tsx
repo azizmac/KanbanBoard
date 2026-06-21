@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AvatarStack } from "@/components/Avatar";
 import { pluralTasks } from "@/lib/format";
 import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
+import { BoardMenu } from "./BoardMenu";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { BoardTelegramButton } from "./BoardTelegramButton";
 import { ColumnView } from "./ColumnView";
@@ -31,6 +32,7 @@ export function BoardView({
   regions,
   memberNames,
   canCreate,
+  canManage,
   tgLink,
 }: {
   board: BoardData;
@@ -38,6 +40,7 @@ export function BoardView({
   regions: { id: string; name: string }[];
   memberNames: string[];
   canCreate: boolean;
+  canManage: boolean;
   tgLink: { code: string; botUsername: string; linked: boolean } | null;
 }) {
   const [columns, setColumns] = useState<ColumnData[]>(board.columns);
@@ -282,6 +285,7 @@ export function BoardView({
             </svg>
             Задача
           </button>
+          {canManage && <BoardMenu boardId={board.id} boardName={board.name} />}
         </div>
       </div>
 
@@ -300,6 +304,7 @@ export function BoardView({
               linked={tgLink.linked}
             />
           )}
+          {canManage && <BoardMenu boardId={board.id} boardName={board.name} />}
         </div>
         <div className="scroll-thin -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
           {columns.map((c) => {
