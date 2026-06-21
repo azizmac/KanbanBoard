@@ -58,12 +58,14 @@ export async function searchTasks(user: Actor, f: SearchFilters): Promise<Search
   const scope = await visibleBoardWhere(user);
   const now = new Date();
 
-  const boardWhere: Prisma.BoardWhereInput = f.board ? { AND: [scope, { id: f.board }] } : scope;
+  const boardWhere: Prisma.BoardWhereInput = {
+    AND: [scope, { archivedAt: null }, ...(f.board ? [{ id: f.board }] : [])],
+  };
   const column: Prisma.ColumnWhereInput = { board: boardWhere };
   if (f.status === "done") column.name = "Готово";
   else if (f.status !== "all") column.name = { not: "Готово" }; // default: open
 
-  const where: Prisma.TaskWhereInput = { column };
+  const where: Prisma.TaskWhereInput = { column, archivedAt: null };
   if (f.q?.trim()) where.title = { contains: f.q.trim(), mode: "insensitive" };
   if (f.assignee === "none") where.assigneeId = null;
   else if (f.assignee) where.assigneeId = f.assignee;

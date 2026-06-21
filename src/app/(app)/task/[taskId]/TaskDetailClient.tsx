@@ -18,6 +18,7 @@ import type {
   TaskDetailData,
   TeamUser,
 } from "@/lib/types";
+import { ArchiveTaskButton } from "../../board/ArchiveTaskButton";
 import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
 import { AssigneePicker } from "./AssigneePicker";
 import { Checklist } from "./Checklist";
@@ -493,6 +494,10 @@ export function TaskDetailClient({
               <UserLink id={task.creator.id} className="hover:underline">{task.creator.name}</UserLink>
             </div>
             <div className="font-mono">Создано: {formatDateTime(task.createdAt)}</div>
+          </div>
+
+          <div className="flex justify-start">
+            <ArchiveTaskButton taskId={task.id} archived={task.archived} />
           </div>
 
           {canDelete && (

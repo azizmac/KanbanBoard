@@ -33,7 +33,7 @@ export async function getMyWork(
   userId: string,
 ): Promise<{ assigned: MyTaskRow[]; mentioned: MyTaskRow[] }> {
   const assigned = await prisma.task.findMany({
-    where: { assigneeId: userId },
+    where: { assigneeId: userId, archivedAt: null },
     orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
     include: myTaskInclude,
   });
@@ -45,7 +45,7 @@ export async function getMyWork(
   const taskIds = [...new Set(mentions.map((m) => m.taskId!).filter(Boolean))];
   const mentioned = taskIds.length
     ? await prisma.task.findMany({
-        where: { id: { in: taskIds } },
+        where: { id: { in: taskIds }, archivedAt: null },
         orderBy: { updatedAt: "desc" },
         include: myTaskInclude,
       })
@@ -95,6 +95,7 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailData | nu
     assignee: task.assignee,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
+    archived: Boolean(task.archivedAt),
     tags: task.tags,
     checklist: task.checklist,
     activities: task.activities.map((a) => ({

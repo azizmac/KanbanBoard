@@ -130,6 +130,7 @@ model Board {
   id        String   @id @default(cuid())
   name      String
   color     String   @default("iris") // tint key for the board badge (see lib/tints)
+  archivedAt DateTime? // soft-archived: hidden from lists, restorable
   createdAt DateTime @default(now())
   columns   Column[]
   tags      Tag[]
@@ -177,6 +178,7 @@ model Task {
   position    Int // order within its column
   priority    Priority  @default(NORMAL)
   dueDate     DateTime?
+  archivedAt  DateTime? // soft-archived: hidden from the board + counts, restorable
 
   columnId String
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)

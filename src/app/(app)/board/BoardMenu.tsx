@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteBoard } from "./actions";
+import { archiveDoneTasks, setBoardArchived } from "./archive-actions";
 
 /** Board-level actions (kebab menu). Only rendered for users who can manage the
  *  board — configure columns + delete board. */
@@ -34,6 +36,28 @@ export function BoardMenu({
     });
   }
 
+  function clearDone() {
+    setOpen(false);
+    startTransition(async () => {
+      const res = await archiveDoneTasks(boardId);
+      if (res.ok) router.refresh();
+      else alert(res.error ?? "Ошибка");
+    });
+  }
+
+  function archiveBoard() {
+    if (!confirm(`Архивировать доску «${boardName}»? Её можно вернуть из архива.`)) return;
+    setOpen(false);
+    startTransition(async () => {
+      const res = await setBoardArchived(boardId, true);
+      if (res.ok) router.push("/boards");
+      else alert(res.error ?? "Ошибка");
+    });
+  }
+
+  const itemClass =
+    "flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-[13.5px] font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-surface-warm)]";
+
   return (
     <div className="relative">
       <button
@@ -64,6 +88,25 @@ export function BoardMenu({
               <rect x="17" y="4" width="4" height="10" rx="1" />
             </svg>
             Настроить колонки
+          </button>
+          <button onMouseDown={(e) => e.preventDefault()} onClick={clearDone} disabled={pending} className={itemClass}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+            </svg>
+            Архивировать выполненные
+          </button>
+          <Link href={`/board/${boardId}/archive`} onClick={() => setOpen(false)} className={itemClass}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+            </svg>
+            Архив доски
+          </Link>
+          <div className="my-1 h-px bg-[var(--color-line)]" />
+          <button onMouseDown={(e) => e.preventDefault()} onClick={archiveBoard} disabled={pending} className={itemClass}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+            </svg>
+            Архивировать доску
           </button>
           <button
             onMouseDown={(e) => e.preventDefault()}

@@ -49,7 +49,7 @@ type OpenTask = {
 /** Open (not «Готово») tasks assigned to a user, soonest-due first. */
 function openAssignedTasks(userId: string): Promise<OpenTask[]> {
   return prisma.task.findMany({
-    where: { assigneeId: userId, column: { name: { not: "Готово" } } },
+    where: { assigneeId: userId, archivedAt: null, column: { name: { not: "Готово" } } },
     orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
     select: { id: true, title: true, dueDate: true, column: { select: { name: true, board: { select: { name: true } } } } },
   });
@@ -129,7 +129,7 @@ async function boardTasksMessage(boardId: string): Promise<string> {
       columns: {
         orderBy: { position: "asc" },
         include: {
-          tasks: { orderBy: { position: "asc" }, include: { assignee: { select: { name: true } } } },
+          tasks: { where: { archivedAt: null }, orderBy: { position: "asc" }, include: { assignee: { select: { name: true } } } },
         },
       },
     },

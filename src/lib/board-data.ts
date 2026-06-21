@@ -14,6 +14,7 @@ function isProgress(name: string) {
 }
 
 const cardTaskInclude = {
+  where: { archivedAt: null },
   orderBy: { position: "asc" },
   include: {
     assignee: { select: { id: true, name: true, avatarUrl: true } },
@@ -78,7 +79,7 @@ export async function getBoard(user: Actor, boardId?: string): Promise<BoardData
 /** Lightweight list of the user's boards for the header switcher. */
 export async function getBoardOptions(user: Actor): Promise<BoardOption[]> {
   const boards = await prisma.board.findMany({
-    where: await visibleBoardWhere(user),
+    where: { AND: [await visibleBoardWhere(user), { archivedAt: null }] },
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true, color: true },
   });
@@ -88,13 +89,14 @@ export async function getBoardOptions(user: Actor): Promise<BoardOption[]> {
 /** The user's boards with progress + members, for the "Все доски" overview. */
 export async function getBoardSummaries(user: Actor): Promise<BoardSummary[]> {
   const boards = await prisma.board.findMany({
-    where: await visibleBoardWhere(user),
+    where: { AND: [await visibleBoardWhere(user), { archivedAt: null }] },
     orderBy: { createdAt: "asc" },
     include: {
       columns: {
         orderBy: { position: "asc" },
         include: {
           tasks: {
+            where: { archivedAt: null },
             select: {
               updatedAt: true,
               assignee: { select: { name: true } },

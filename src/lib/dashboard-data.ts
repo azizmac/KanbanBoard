@@ -22,7 +22,7 @@ export async function getDashboard(user: Actor): Promise<DashboardData> {
 
   // One pass over all OPEN (not «Готово») tasks in scope; aggregate in JS.
   const open = await prisma.task.findMany({
-    where: { column: { name: { not: "Готово" }, board: scope } },
+    where: { archivedAt: null, column: { name: { not: "Готово" }, board: { AND: [scope, { archivedAt: null }] } } },
     select: {
       dueDate: true,
       assignee: { select: { id: true, name: true } },

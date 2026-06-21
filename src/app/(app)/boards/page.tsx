@@ -1,20 +1,28 @@
 import Link from "next/link";
 import { AvatarStack } from "@/components/Avatar";
+import { visibleBoardWhere } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { getBoardSummaries } from "@/lib/board-data";
 import { pluralBoards, pluralTasks } from "@/lib/format";
 import { listManageableRegions } from "@/lib/org-data";
+import { prisma } from "@/lib/prisma";
 import { tint } from "@/lib/tints";
 import type { BoardSummary } from "@/lib/types";
+import { BoardRestoreButton } from "./BoardRestoreButton";
 import { CreateBoard } from "./CreateBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoardsPage() {
   const user = await requireUser();
-  const [boards, regions] = await Promise.all([
+  const [boards, regions, archived] = await Promise.all([
     getBoardSummaries(user),
     listManageableRegions(user),
+    prisma.board.findMany({
+      where: { AND: [await visibleBoardWhere(user), { archivedAt: { not: null } }] },
+      orderBy: { archivedAt: "desc" },
+      select: { id: true, name: true, color: true },
+    }),
   ]);
   // Everyone can create a board (staff get personal, region-less boards).
   return (
@@ -33,6 +41,31 @@ export default async function BoardsPage() {
         ))}
         <CreateBoard variant="tile" regions={regions} />
       </div>
+
+      {archived.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]">
+            Архив ({archived.length})
+          </h2>
+          <div className="space-y-2">
+            {archived.map((b) => {
+              const c = tint(b.color);
+              return (
+                <div
+                  key={b.id}
+                  className="flex items-center gap-3 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3.5 py-2.5"
+                >
+                  <span className="grid h-8 w-8 place-items-center rounded-[9px] text-[13px] font-bold" style={{ background: c.bg, color: c.text }}>
+                    {b.name.charAt(0)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-muted)]">{b.name}</span>
+                  <BoardRestoreButton boardId={b.id} />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

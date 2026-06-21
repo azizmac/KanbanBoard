@@ -104,6 +104,7 @@ export type TaskDetailData = {
   assignee: UserRef | null;
   createdAt: string;
   updatedAt: string;
+  archived: boolean;
   comments: CommentData[];
   attachments: AttachmentData[];
   tags: TagData[];
