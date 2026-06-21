@@ -1,6 +1,7 @@
 import { Avatar } from "@/components/Avatar";
 import { PushToggle } from "@/components/PushToggle";
 import { ThemeSegment } from "@/components/ThemeToggle";
+import { NotifySettings } from "./NotifySettings";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/auth-actions";
 import { roleLabels } from "@/lib/constants";
@@ -142,6 +143,7 @@ export default async function ProfilePage() {
               <div className="mb-2.5 text-sm font-medium text-[var(--color-ink)]">Оформление</div>
               <ThemeSegment />
             </div>
+            <NotifySettings paused={me.notifyPaused} quietStart={me.quietStart} quietEnd={me.quietEnd} />
             <PushToggle />
             <form action={logoutAction}>
               <button

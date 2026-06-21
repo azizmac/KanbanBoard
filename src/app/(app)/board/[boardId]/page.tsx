@@ -16,11 +16,12 @@ export default async function BoardPage({
 }) {
   const { boardId } = await params;
   const user = await requireUser();
-  const [board, boards, regions, meta] = await Promise.all([
+  const [board, boards, regions, meta, mutedCount] = await Promise.all([
     getBoard(user, boardId),
     getBoardOptions(user),
     listManageableRegions(user), // [] for staff → they create personal (region-less) boards
     prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } }),
+    prisma.user.count({ where: { id: user.id, mutedBoards: { some: { id: boardId } } } }),
   ]);
 
   if (!board) notFound();
@@ -51,6 +52,7 @@ export default async function BoardPage({
       memberNames={memberNames}
       canCreate={canCreate}
       canManage={canManage}
+      muted={mutedCount > 0}
       tgLink={tgLink}
     />
   );

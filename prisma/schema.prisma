@@ -38,6 +38,11 @@ model User {
   manager   User?   @relation("Reports", fields: [managerId], references: [id], onDelete: SetNull)
   reports   User[]  @relation("Reports")
 
+  // Notification preferences (external pings only — the in-app feed is unaffected)
+  quietStart   Int?    // do-not-disturb window start hour (0-23, Europe/Moscow)
+  quietEnd     Int?    // ...end hour; wraps midnight when end < start
+  notifyPaused Boolean @default(false) // master pause for Telegram + web push
+
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -58,6 +63,7 @@ model User {
   managedRegions Region[] @relation("RegionManagers")
   groups         Group[]  @relation("GroupMembers")
   ownedBoards    Board[]  @relation("OwnedBoards")
+  mutedBoards    Board[]  @relation("BoardMutes") // boards this user silenced
 
   @@index([managerId])
 }
@@ -133,6 +139,7 @@ model Board {
   regionId String?
   region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
   groups   Group[] @relation("BoardGroups")
+  mutedBy  User[]  @relation("BoardMutes") // users who silenced this board
 
   // personal boards: a self-signup member owns the boards they create
   ownerId String?

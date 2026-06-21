@@ -20,6 +20,7 @@ import { AvatarStack } from "@/components/Avatar";
 import { pluralTasks } from "@/lib/format";
 import type { BoardData, BoardOption, ColumnData, TaskCard } from "@/lib/types";
 import { BoardMenu } from "./BoardMenu";
+import { BoardMuteButton } from "./BoardMuteButton";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { BoardTelegramButton } from "./BoardTelegramButton";
 import { ColumnManager } from "./ColumnManager";
@@ -34,6 +35,7 @@ export function BoardView({
   memberNames,
   canCreate,
   canManage,
+  muted,
   tgLink,
 }: {
   board: BoardData;
@@ -42,6 +44,7 @@ export function BoardView({
   memberNames: string[];
   canCreate: boolean;
   canManage: boolean;
+  muted: boolean;
   tgLink: { code: string; botUsername: string; linked: boolean } | null;
 }) {
   const [columns, setColumns] = useState<ColumnData[]>(board.columns);
@@ -278,6 +281,7 @@ export function BoardView({
               linked={tgLink.linked}
             />
           )}
+          <BoardMuteButton boardId={board.id} muted={muted} />
           <button
             onClick={newTask}
             className="flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"
@@ -308,6 +312,7 @@ export function BoardView({
               linked={tgLink.linked}
             />
           )}
+          <BoardMuteButton boardId={board.id} muted={muted} />
           {canManage && (
             <BoardMenu boardId={board.id} boardName={board.name} onManageColumns={() => setColumnsOpen(true)} />
           )}
