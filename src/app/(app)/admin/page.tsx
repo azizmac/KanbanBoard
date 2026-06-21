@@ -23,11 +23,16 @@ export default async function AdminPage() {
     name: u.name,
     username: u.username,
     role: u.role,
+    superAdmin: u.superAdmin,
     position: u.position,
     managerId: u.managerId,
     active: u.active,
     telegramLinked: Boolean(u.telegramId),
   }));
 
-  return <AdminPanel users={rows} currentUserId={user.id} positions={positions} />;
+  const actorTier = user.superAdmin ? 3 : 2; // admin panel is ADMIN-only (tier ≥ 2)
+
+  return (
+    <AdminPanel users={rows} currentUserId={user.id} actorTier={actorTier} positions={positions} />
+  );
 }

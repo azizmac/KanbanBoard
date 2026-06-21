@@ -46,7 +46,7 @@ export async function resolveTelegramLogin(
   const ownerHandle = process.env.ADMIN_TELEGRAM_USERNAME?.toLowerCase();
   if (ownerHandle && tgUsername && tgUsername === ownerHandle) {
     const owner = await prisma.user.create({
-      data: { telegramId, username: tgUsername, name, role: "ADMIN" },
+      data: { telegramId, username: tgUsername, name, role: "ADMIN", superAdmin: true },
     });
     return { ok: true, userId: owner.id };
   }

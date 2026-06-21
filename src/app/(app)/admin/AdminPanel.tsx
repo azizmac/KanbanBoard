@@ -14,11 +14,20 @@ export type AdminUser = {
   name: string;
   username: string | null;
   role: Role;
+  superAdmin: boolean;
   position: string | null;
   managerId: string | null;
   active: boolean;
   telegramLinked: boolean;
 };
+
+const ALL_ROLES: Role[] = ["MEMBER", "MANAGER", "ADMIN"];
+function roleTier(role: Role) {
+  return role === "ADMIN" ? 2 : role === "MANAGER" ? 1 : 0;
+}
+function targetTier(u: AdminUser) {
+  return u.superAdmin ? 3 : roleTier(u.role);
+}
 
 const ctl =
   "h-[38px] w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none transition focus:border-[var(--color-accent)] focus:ring-[3px] focus:ring-[var(--color-accent)]/10";
@@ -47,10 +56,12 @@ const FILTERS: { key: "ALL" | Role; label: string }[] = [
 export function AdminPanel({
   users,
   currentUserId,
+  actorTier,
   positions,
 }: {
   users: AdminUser[];
   currentUserId: string;
+  actorTier: number;
   positions: { id: string; name: string }[];
 }) {
   const router = useRouter();
@@ -119,6 +130,11 @@ export function AdminPanel({
   }
 
   const managerOptions = rows.filter((r) => r.active);
+
+  // You may only touch — and only assign — strictly below your tier.
+  const assignable = new Set(ALL_ROLES.filter((r) => roleTier(r) < actorTier));
+  const assignableRoles = ALL_ROLES.filter((r) => assignable.has(r));
+  const canManage = (u: AdminUser) => actorTier > targetTier(u);
 
   const counts = useMemo(() => {
     const admins = rows.filter((r) => r.role === "ADMIN").length;
@@ -191,7 +207,7 @@ export function AdminPanel({
             <span className="text-sm font-medium text-[var(--color-ink)]">Ссылка-приглашение</span>
             {inviteCopied && <span className="text-xs text-[var(--color-success)]">· скопирована</span>}
             <span className="ml-auto flex gap-1.5">
-              {(["MEMBER", "MANAGER", "ADMIN"] as const).map((r) => (
+              {assignableRoles.map((r) => (
                 <button
                   key={r}
                   onClick={() => genInvite(r)}
@@ -270,9 +286,9 @@ export function AdminPanel({
           />
           <input className={ctl} placeholder="Должность" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
           <select className={ctl} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-            <option value="MEMBER">{roleLabels.MEMBER}</option>
-            <option value="MANAGER">{roleLabels.MANAGER}</option>
-            <option value="ADMIN">{roleLabels.ADMIN}</option>
+            {assignableRoles.map((r) => (
+              <option key={r} value={r}>{roleLabels[r]}</option>
+            ))}
           </select>
           <select className={ctl} value={form.managerId} onChange={(e) => setForm({ ...form, managerId: e.target.value })}>
             <option value="">— без руководителя —</option>
@@ -315,6 +331,11 @@ export function AdminPanel({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-[14.5px] font-semibold text-[var(--color-ink)]">{u.name}</span>
                   {u.id === currentUserId && <span className="text-[11px] text-[var(--color-muted)]">· вы</span>}
+                  {u.superAdmin && (
+                    <span className="inline-flex items-center gap-1 rounded bg-[#FEF0C7] px-1.5 py-0.5 text-[10px] font-semibold text-[#B54708]">
+                      <ShieldIcon /> Владелец
+                    </span>
+                  )}
                   {u.telegramLinked && (
                     <span className="rounded bg-[var(--color-accent-soft)] px-1.5 text-[10px] font-medium text-[var(--color-accent)]">TG</span>
                   )}
@@ -332,19 +353,23 @@ export function AdminPanel({
             <div>
               <select
                 value={u.role}
+                disabled={!canManage(u)}
                 onChange={(e) => patch(u.id, { role: e.target.value as Role })}
-                className={`h-[34px] w-full max-w-[180px] rounded-[9px] border px-2.5 text-[13.5px] outline-none focus:border-[var(--color-accent)] ${roleSelectClass[u.role]}`}
+                className={`h-[34px] w-full max-w-[180px] rounded-[9px] border px-2.5 text-[13.5px] outline-none focus:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60 ${roleSelectClass[u.role]}`}
               >
-                <option value="MEMBER">{roleLabels.MEMBER}</option>
-                <option value="MANAGER">{roleLabels.MANAGER}</option>
-                <option value="ADMIN">{roleLabels.ADMIN}</option>
+                {ALL_ROLES.map((r) => (
+                  <option key={r} value={r} disabled={!assignable.has(r)}>
+                    {roleLabels[r]}
+                  </option>
+                ))}
               </select>
             </div>
 
             {/* position + manager */}
             <div className="flex flex-col gap-2 sm:flex-row">
               <select
-                className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] outline-none focus:border-[var(--color-accent)]"
+                disabled={!canManage(u)}
+                className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] outline-none focus:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
                 value={positions.some((p) => p.name === u.position) ? (u.position ?? "") : ""}
                 onChange={(e) => patch(u.id, { position: e.target.value || null })}
               >
@@ -359,7 +384,8 @@ export function AdminPanel({
                 )}
               </select>
               <select
-                className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)]"
+                disabled={!canManage(u)}
+                className="h-[34px] flex-1 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
                 value={u.managerId ?? ""}
                 onChange={(e) => patch(u.id, { managerId: e.target.value || null })}
               >
@@ -376,7 +402,8 @@ export function AdminPanel({
             <div className="flex md:justify-end">
               <button
                 onClick={() => patch(u.id, { active: !u.active })}
-                disabled={u.id === currentUserId}
+                disabled={!canManage(u)}
+                title={canManage(u) ? undefined : "Недостаточно прав для этого пользователя"}
                 className={`rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition disabled:opacity-40 ${
                   u.active
                     ? "text-[var(--color-urgent)] hover:bg-[#FEF3F2]"

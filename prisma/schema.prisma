@@ -27,6 +27,10 @@ model User {
   avatarUrl  String?
   phone      String? // shared by the user via the bot (request_contact)
   role       Role    @default(MEMBER)
+  // The single owner/superadmin: outranks every director, can never be
+  // deactivated or demoted by anyone (set once via migration + owner bootstrap,
+  // not editable through the UI). See lib/access.ts (actorTier/canManageUser).
+  superAdmin Boolean @default(false)
   position   String? // job title / должность (e.g. "Backend Lead")
 
   // optional reporting hierarchy ("кто кому подчиняется")
