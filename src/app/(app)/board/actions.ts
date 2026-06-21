@@ -99,6 +99,23 @@ export async function createBoard(input: z.input<typeof boardSchema>) {
   return { ok: true as const, id: board.id };
 }
 
+/** Delete a board and everything in it. Director, the region's manager, or the
+ *  board's owner (personal boards). Cascades to columns/tasks/tags/templates. */
+export async function deleteBoard(boardId: string) {
+  const user = await requireUser();
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { regionId: true, ownerId: true },
+  });
+  if (!board || !(await canManageBoard(user, board))) {
+    return { ok: false as const, error: "Недостаточно прав" };
+  }
+  await prisma.board.delete({ where: { id: boardId } });
+  revalidatePath("/boards");
+  revalidatePath("/board/[boardId]", "page");
+  return { ok: true as const };
+}
+
 export async function unlinkBoardTelegram(boardId: string) {
   const user = await requireUser();
   const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } });

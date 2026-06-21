@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canManageGroup, canManageOrg, canManageRegion } from "@/lib/access";
+import type { Role } from "@/generated/prisma/client";
+import { canAssignRole, canManageGroup, canManageOrg, canManageRegion } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
@@ -35,13 +36,19 @@ export async function setBoardRegion(boardId: string, regionId: string | null) {
 
 // ----- Positions (справочник должностей) -----
 
-export async function createPosition(name: string) {
-  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+export async function createPosition(name: string, role: Role = "MEMBER", color = "gray") {
+  const actor = await director();
+  if (!actor) return { ok: false as const, error: "Недостаточно прав" };
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
+  // A position's level can't exceed what the actor may assign (so a director
+  // can't mint a «Директор»-level position; only the owner can).
+  if (!canAssignRole(actor, role)) {
+    return { ok: false as const, error: "Нельзя задать уровень на своём ранге или выше" };
+  }
   const exists = await prisma.position.findFirst({ where: { name: { equals: parsed.data, mode: "insensitive" } } });
   if (exists) return { ok: false as const, error: "Такая должность уже есть" };
-  await prisma.position.create({ data: { name: parsed.data } });
+  await prisma.position.create({ data: { name: parsed.data, role, color } });
   revalidatePath("/admin/org");
   revalidatePath("/admin");
   return { ok: true as const };

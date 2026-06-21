@@ -38,33 +38,34 @@ export default async function ProfilePage() {
 
   return (
     <div className="pb-10">
-      {/* Cover — dark graphite with a terracotta glow (light avatar reads well) */}
-      <div className="relative h-[120px] overflow-hidden bg-[linear-gradient(120deg,#262320,#3A332D_55%,#4A3F38)] sm:h-[120px]">
+      {/* Identity hero — avatar + name live ON the dark cover (white text reads in
+          both themes), so the header scrolls as one cohesive block instead of
+          leaving the avatar clipped above a thin cover strip when scrolled. */}
+      <div className="relative overflow-hidden bg-[linear-gradient(120deg,#262320,#3A332D_55%,#4A3F38)]">
         <div
-          className="absolute -right-8 -top-10 h-52 w-52 rounded-full opacity-[0.38]"
+          className="pointer-events-none absolute -right-8 -top-10 h-52 w-52 rounded-full opacity-[0.38]"
           style={{ background: "radial-gradient(circle, #D97757, transparent 70%)" }}
         />
-      </div>
-
-      <div className="mx-auto max-w-4xl px-5">
-        {/* Header — avatar overlaps the cover; name stays below it */}
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
-          <div className="-mt-14 rounded-[26px] bg-[var(--color-surface)] p-1 shadow-[0_1px_3px_rgba(20,20,20,0.08)]">
-            <Avatar name={me.name} src={me.avatarUrl} size={96} className="!rounded-[22px]" />
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-4 px-5 py-8 text-center sm:flex-row sm:gap-5 sm:text-left">
+          <div className="shrink-0 rounded-[24px] bg-white/10 p-1 ring-1 ring-white/15">
+            <Avatar name={me.name} src={me.avatarUrl} size={88} className="!rounded-[20px]" />
           </div>
-          <div className="flex-1 pt-1 text-center sm:pt-0 sm:text-left">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <h1 className="text-[25px] font-bold tracking-[-0.03em]">{me.name}</h1>
-              <span className="rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
+              <h1 className="text-[25px] font-bold tracking-[-0.03em] text-white">{me.name}</h1>
+              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white">
                 {roleLabels[me.role]}
               </span>
             </div>
-            <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+            <p className="mt-1 text-sm text-white/70">
               {me.position ?? "—"}
-              {me.username && <span className="ml-2 font-mono text-[var(--color-faint)]">@{me.username}</span>}
+              {me.username && <span className="ml-2 font-mono text-white/55">@{me.username}</span>}
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="mx-auto max-w-4xl px-5">
 
         {/* Stats */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

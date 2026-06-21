@@ -50,6 +50,7 @@ export default async function BoardPage({
       regions={regions}
       memberNames={memberNames}
       canCreate={canCreate}
+      canManage={canManage}
       tgLink={tgLink}
     />
   );

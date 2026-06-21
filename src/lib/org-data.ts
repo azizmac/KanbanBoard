@@ -1,5 +1,8 @@
+import type { Role } from "@/generated/prisma/client";
 import { type Actor, isDirector, manageableRegionIds } from "./access";
 import { prisma } from "./prisma";
+
+export type PositionItem = { id: string; name: string; role: Role; color: string };
 
 export type RegionOption = { id: string; name: string; color: string };
 
@@ -43,9 +46,12 @@ export async function getRegionsDetail(): Promise<RegionDetail[]> {
   }));
 }
 
-/** Job-title list (справочник должностей). */
-export async function listPositions(): Promise<{ id: string; name: string }[]> {
-  return prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+/** Job-title catalog (справочник должностей) with each position's level + colour. */
+export async function listPositions(): Promise<PositionItem[]> {
+  return prisma.position.findMany({
+    orderBy: [{ role: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, role: true, color: true },
+  });
 }
 
 /** Everything the org panel edits, scoped to what the user manages. */
@@ -76,7 +82,10 @@ export async function getOrgAdminData(user: Actor) {
       orderBy: { name: "asc" },
       select: { id: true, name: true, regionId: true },
     }),
-    prisma.position.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.position.findMany({
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, role: true, color: true },
+    }),
   ]);
   return {
     positions,

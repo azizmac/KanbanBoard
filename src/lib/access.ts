@@ -4,17 +4,41 @@ import { prisma } from "./prisma";
 // ---- Role tiers ----
 // The Role enum is reused but relabeled as the org hierarchy:
 //   ADMIN   → Директор  (sees ALL boards, manages regions/roles)
-//   MANAGER → Регионал   (runs assigned region(s): boards, groups, invites)
+//   MANAGER → Региональный управляющий (runs assigned region(s): boards, groups, invites)
 //   MEMBER  → Линейный   (sees boards via group membership only)
 // See prisma/schema.prisma and docs/ACCESS.md.
 
-export type Actor = { id: string; role: Role };
+export type Actor = { id: string; role: Role; superAdmin?: boolean };
 
 export function isDirector(u: Actor) {
   return u.role === "ADMIN";
 }
 export function isRegional(u: Actor) {
   return u.role === "MANAGER";
+}
+
+// ---- Management hierarchy (who may deactivate / re-role whom) ----
+// Strict tiers: superadmin (3) > директор (2) > регионал (1) > линейный (0).
+// You may only manage — and only assign roles — strictly BELOW your own tier.
+// So directors can't touch each other or the owner, and the owner can be
+// deactivated/demoted by no one (not even themselves).
+
+export function roleTier(role: Role): number {
+  return role === "ADMIN" ? 2 : role === "MANAGER" ? 1 : 0;
+}
+
+export function actorTier(u: Actor): number {
+  return u.superAdmin ? 3 : roleTier(u.role);
+}
+
+/** Can `actor` change `target`'s role / active state at all? */
+export function canManageUser(actor: Actor, target: Actor): boolean {
+  return actorTier(actor) > actorTier(target);
+}
+
+/** May `actor` assign/create/invite at this role? (strictly below their tier) */
+export function canAssignRole(actor: Actor, role: Role): boolean {
+  return roleTier(role) < actorTier(actor);
 }
 
 export function canManageOrg(u: Actor) {

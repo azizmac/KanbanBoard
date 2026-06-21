@@ -27,6 +27,10 @@ model User {
   avatarUrl  String?
   phone      String? // shared by the user via the bot (request_contact)
   role       Role    @default(MEMBER)
+  // The single owner/superadmin: outranks every director, can never be
+  // deactivated or demoted by anyone (set once via migration + owner bootstrap,
+  // not editable through the UI). See lib/access.ts (actorTier/canManageUser).
+  superAdmin Boolean @default(false)
   position   String? // job title / должность (e.g. "Backend Lead")
 
   // optional reporting hierarchy ("кто кому подчиняется")
@@ -79,11 +83,15 @@ model Region {
   managers  User[]   @relation("RegionManagers")
 }
 
-// Справочник должностей — admin-managed list of job titles. A user's `position`
-// string is set from this list.
+// Справочник должностей — admin-built catalog of job titles. Each position is
+// "constructed" with an access level (role tier it belongs to) and a colour;
+// access itself stays governed by User.role (single source of truth) — the level
+// here is organisational metadata + the default role suggested on assignment.
 model Position {
   id        String   @id @default(cuid())
   name      String   @unique
+  role      Role     @default(MEMBER) // access level this position belongs to
+  color     String   @default("gray") // tint key (see lib/tints)
   createdAt DateTime @default(now())
 }
 
@@ -360,4 +368,22 @@ model TaskTemplate {
   createdAt DateTime @default(now())
 
   @@index([boardId])
+}
+
+// One-time nonce for "login via bot deep-link" — the RU-friendly sign-in that
+// doesn't depend on telegram.org (the official widget is blocked there). The
+// browser creates a row, opens t.me/<bot>?start=login_<nonce>; the bot resolves
+// the Telegram user and flips status to "ready"; the browser polls and the
+// status endpoint then mints the session. Short-lived + single-use.
+model LoginNonce {
+  id          String   @id @default(cuid())
+  nonce       String   @unique
+  inviteToken String? // carried from the kanban_invite cookie so role/group survive
+  userId      String? // set by the bot once the Telegram user is resolved
+  status      String   @default("pending") // pending | ready | used | denied
+  error       String? // "disabled" | "notlinked" when denied
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
 }

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { roleLabels } from "@/lib/constants";
-import { tint } from "@/lib/tints";
+import { roleLabelsShort } from "@/lib/constants";
+import { TAG_TINT_KEYS, tint } from "@/lib/tints";
 import {
   createGroup,
   createGroupInvite,
@@ -21,11 +21,16 @@ import {
   setRegionManagers,
 } from "./org-actions";
 
+type Role = "ADMIN" | "MANAGER" | "MEMBER";
 type Opt = { id: string; name: string };
 type Region = { id: string; name: string; color: string; managerIds: string[]; boardCount: number };
 type Group = { id: string; name: string; regionId: string | null; memberIds: string[]; boardIds: string[] };
-type UserOpt = { id: string; name: string; role: "ADMIN" | "MANAGER" | "MEMBER" };
+type UserOpt = { id: string; name: string; role: Role };
 type BoardOpt = { id: string; name: string; regionId: string | null };
+type PositionOpt = { id: string; name: string; role: Role; color: string };
+
+const ALL_ROLES: Role[] = ["MEMBER", "MANAGER", "ADMIN"];
+const roleTier = (r: Role) => (r === "ADMIN" ? 2 : r === "MANAGER" ? 1 : 0);
 
 const sectionLabel =
   "mb-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]";
@@ -80,13 +85,15 @@ export function OrgPanel({
   boards,
   positions,
   canManageRegions,
+  actorTier,
 }: {
   regions: Region[];
   groups: Group[];
   users: UserOpt[];
   boards: BoardOpt[];
-  positions: Opt[];
+  positions: PositionOpt[];
   canManageRegions: boolean;
+  actorTier: number;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -95,7 +102,12 @@ export function OrgPanel({
   const [newGroup, setNewGroup] = useState("");
   const [newGroupRegion, setNewGroupRegion] = useState<string>(regions[0]?.id ?? "");
   const [newPosition, setNewPosition] = useState("");
+  const [newPositionRole, setNewPositionRole] = useState<Role>("MEMBER");
+  const [newPositionColor, setNewPositionColor] = useState<string>("gray");
   const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string>("ALL"); // "ALL" | "NONE" | regionId
+
+  const assignablePositionRoles = ALL_ROLES.filter((r) => roleTier(r) < actorTier);
 
   function genGroupInvite(groupId: string) {
     startTransition(async () => {
@@ -120,8 +132,16 @@ export function OrgPanel({
     });
   }
 
-  const userOpts: Opt[] = users.map((u) => ({ id: u.id, name: `${u.name} · ${roleLabels[u.role]}` }));
+  const userOpts: Opt[] = users.map((u) => ({ id: u.id, name: `${u.name} · ${roleLabelsShort[u.role]}` }));
   const regionName = (id: string | null) => regions.find((r) => r.id === id)?.name ?? "—";
+
+  const visibleGroups = groups.filter((g) =>
+    groupFilter === "ALL"
+      ? true
+      : groupFilter === "NONE"
+        ? g.regionId === null
+        : g.regionId === groupFilter,
+  );
 
   return (
     <div className="mx-auto max-w-[1080px] px-5 py-7 sm:px-9">
@@ -132,8 +152,9 @@ export function OrgPanel({
         </Link>
       </div>
       <p className="mb-6 text-sm text-[var(--color-muted)]">
-        Директора создают регионы и назначают регионалов. Регионал ведёт доски своего региона.
-        Доступ линейного персонала к доске — через группы, привязанные к этой доске.
+        Директора создают регионы и назначают региональных управляющих. Региональный управляющий
+        ведёт доски своего региона. Доступ линейного персонала к доске — через группы, привязанные
+        к этой доске.
       </p>
 
       {error && (
@@ -192,7 +213,7 @@ export function OrgPanel({
                 </div>
                 {canManageRegions && (
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-11">
-                    <span className="text-[12px] text-[var(--color-muted)]">Регионалы:</span>
+                    <span className="text-[12px] text-[var(--color-muted)]">Управляющие:</span>
                     <MultiSelect
                       all={userOpts}
                       selected={r.managerIds}
@@ -261,8 +282,25 @@ export function OrgPanel({
             Создать
           </button>
         </div>
+        {regions.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {[{ id: "ALL", name: "Все" }, ...regions.map((r) => ({ id: r.id, name: r.name })), { id: "NONE", name: "Без региона" }].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setGroupFilter(f.id)}
+                className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium transition ${
+                  groupFilter === f.id
+                    ? "bg-[var(--color-sidebar)] text-white"
+                    : "bg-[var(--color-surface-warm)] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                }`}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="space-y-2.5">
-          {groups.map((g) => {
+          {visibleGroups.map((g) => {
             const boardOpts: Opt[] = boards
               .filter((b) => !g.regionId || b.regionId === g.regionId)
               .map((b) => ({ id: b.id, name: b.name }));
@@ -310,41 +348,82 @@ export function OrgPanel({
               </div>
             );
           })}
-          {groups.length === 0 && <p className="text-sm text-[var(--color-muted)]">Групп пока нет.</p>}
+          {visibleGroups.length === 0 && (
+            <p className="text-sm text-[var(--color-muted)]">
+              {groups.length === 0 ? "Групп пока нет." : "В этом фильтре групп нет."}
+            </p>
+          )}
         </div>
       </section>
 
-      {/* Positions (directors only) */}
+      {/* Positions — constructor: name + access level + colour (directors only) */}
       {canManageRegions && (
       <section className="mt-9">
-        <h2 className={sectionLabel}>Должности</h2>
+        <h2 className={sectionLabel}>Конструктор должностей</h2>
         <p className="mb-3 text-[13px] text-[var(--color-muted)]">
-          Справочник должностей. Назначаются пользователям в «Управление доступом».
+          Каждая должность несёт уровень доступа и цвет. Назначается пользователям в «Управление
+          доступом»; права определяются уровнем (Директор / Региональный / Линейный).
         </p>
-        <div className="mb-3 flex gap-2">
-          <input
-            value={newPosition}
-            onChange={(e) => setNewPosition(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && newPosition.trim() && (run(createPosition(newPosition.trim())), setNewPosition(""))}
-            placeholder="Новая должность…"
-            className="h-9 w-[260px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
-          />
-          <button
-            onClick={() => newPosition.trim() && (run(createPosition(newPosition.trim())), setNewPosition(""))}
-            className="rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
-          >
-            Добавить
-          </button>
+
+        <div className="mb-4 rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] p-3.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={newPosition}
+              onChange={(e) => setNewPosition(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && newPosition.trim() && (run(createPosition(newPosition.trim(), newPositionRole, newPositionColor)), setNewPosition(""))}
+              placeholder="Название должности…"
+              className="h-9 w-[240px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+            />
+            <select
+              value={newPositionRole}
+              onChange={(e) => setNewPositionRole(e.target.value as Role)}
+              className="h-9 rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-sm outline-none focus:border-[var(--color-accent)]"
+            >
+              {assignablePositionRoles.map((r) => (
+                <option key={r} value={r}>{roleLabelsShort[r]}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => newPosition.trim() && (run(createPosition(newPosition.trim(), newPositionRole, newPositionColor)), setNewPosition(""))}
+              className="ml-auto rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
+            >
+              Создать должность
+            </button>
+          </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="text-[12px] text-[var(--color-muted)]">Цвет:</span>
+            {TAG_TINT_KEYS.map((key) => {
+              const c = tint(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => setNewPositionColor(key)}
+                  aria-label={key}
+                  className={`h-6 w-6 rounded-full transition ${newPositionColor === key ? "ring-2 ring-[var(--color-accent)] ring-offset-1" : ""}`}
+                  style={{ background: c.bg, border: `1px solid ${c.text}` }}
+                />
+              );
+            })}
+          </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {positions.map((p) => (
-            <span key={p.id} className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[13px] font-medium">
-              {p.name}
-              <button onClick={() => confirm(`Удалить должность «${p.name}»?`) && run(deletePosition(p.id))} className="text-[var(--color-faint)] hover:text-[var(--color-urgent)]">
-                ✕
-              </button>
-            </span>
-          ))}
+          {positions.map((p) => {
+            const c = tint(p.color);
+            return (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1.5 rounded-[8px] border px-2.5 py-1.5 text-[13px] font-medium"
+                style={{ background: c.bg, color: c.text, borderColor: c.text }}
+              >
+                {p.name}
+                <span className="rounded bg-white/45 px-1 text-[10px] font-semibold">{roleLabelsShort[p.role]}</span>
+                <button onClick={() => confirm(`Удалить должность «${p.name}»?`) && run(deletePosition(p.id))} className="opacity-60 hover:opacity-100">
+                  ✕
+                </button>
+              </span>
+            );
+          })}
           {positions.length === 0 && <p className="text-sm text-[var(--color-muted)]">Должностей пока нет.</p>}
         </div>
       </section>

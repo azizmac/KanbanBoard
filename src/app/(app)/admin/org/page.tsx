@@ -1,4 +1,4 @@
-import { isDirector, isRegional } from "@/lib/access";
+import { actorTier, isDirector, isRegional } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { getOrgAdminData } from "@/lib/org-data";
 import { AdminUnlock } from "../AdminUnlock";
@@ -19,6 +19,7 @@ export default async function OrgPage() {
       boards={data.boards}
       positions={data.positions}
       canManageRegions={isDirector(user)}
+      actorTier={actorTier(user)}
     />
   );
 }

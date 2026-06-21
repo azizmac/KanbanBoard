@@ -3,6 +3,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { canAssignRole, canManageUser } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
@@ -38,6 +39,9 @@ async function currentAdmin() {
 export async function createInviteLink(role: "MEMBER" | "MANAGER" | "ADMIN" = "MEMBER") {
   const admin = await currentAdmin();
   if (!admin) return { ok: false as const, error: "Недостаточно прав" };
+  if (!canAssignRole(admin, role)) {
+    return { ok: false as const, error: "Нельзя выдавать роль на своём уровне или выше" };
+  }
 
   const token = makeInviteToken(role, 7);
   const base = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
@@ -67,6 +71,10 @@ export async function addUser(input: z.input<typeof addSchema>) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Ошибка" };
   }
   const { name, username, role, position, managerId } = parsed.data;
+
+  if (!canAssignRole(admin, role)) {
+    return { ok: false as const, error: "Нельзя создавать пользователя с ролью на своём уровне или выше" };
+  }
 
   if (username) {
     const exists = await prisma.user.findFirst({
@@ -117,11 +125,27 @@ export async function updateUser(userId: string, input: z.input<typeof updateSch
   if (!parsed.success) return { ok: false as const, error: "Некорректные данные" };
   const data = parsed.data;
 
-  // Lockout protection: can't strip your own admin or deactivate yourself.
-  if (userId === admin.id) {
-    if ((data.role && data.role !== "ADMIN") || data.active === false) {
-      return { ok: false as const, error: "Нельзя снять права или деактивировать себя" };
-    }
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, superAdmin: true },
+  });
+  if (!target) return { ok: false as const, error: "Пользователь не найден" };
+
+  // Strict hierarchy: you may only change someone strictly below your tier. This
+  // covers yourself, your peers, and the owner — none of which you can manage.
+  if (!canManageUser(admin, target)) {
+    return {
+      ok: false as const,
+      error: target.superAdmin
+        ? "Владельца нельзя деактивировать или менять"
+        : userId === admin.id
+          ? "Нельзя менять собственные права или статус"
+          : "Этого пользователя может менять только вышестоящий",
+    };
+  }
+  // Promotion ceiling: never assign a role at your level or above.
+  if (data.role !== undefined && !canAssignRole(admin, data.role)) {
+    return { ok: false as const, error: "Нельзя назначить роль на своём уровне или выше" };
   }
   if (data.managerId && data.managerId === userId) {
     return { ok: false as const, error: "Пользователь не может быть своим руководителем" };
