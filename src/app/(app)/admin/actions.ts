@@ -4,7 +4,9 @@ import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { canAssignRole, canManageUser } from "@/lib/access";
+import { recordAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
+import { roleLabels } from "@/lib/constants";
 import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
 
@@ -45,6 +47,7 @@ export async function createInviteLink(role: "MEMBER" | "MANAGER" | "ADMIN" = "M
 
   const token = makeInviteToken(role, 7);
   const base = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  await recordAudit({ actorId: admin.id, action: "INVITE_CREATED", detail: roleLabels[role] });
   return { ok: true as const, url: `${base}/join/${token}`, role, days: 7 };
 }
 
@@ -92,6 +95,13 @@ export async function addUser(input: z.input<typeof addSchema>) {
       managerId: managerId || null,
     },
   });
+  await recordAudit({
+    actorId: admin.id,
+    action: "USER_CREATED",
+    targetUserId: created.id,
+    detail: `${created.name} · ${roleLabels[created.role]}`,
+  });
+
   revalidatePath("/admin");
   revalidatePath("/team");
   return {
@@ -127,7 +137,7 @@ export async function updateUser(userId: string, input: z.input<typeof updateSch
 
   const target = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, superAdmin: true },
+    select: { id: true, role: true, superAdmin: true, active: true },
   });
   if (!target) return { ok: false as const, error: "Пользователь не найден" };
 
@@ -159,6 +169,23 @@ export async function updateUser(userId: string, input: z.input<typeof updateSch
   if (data.active !== undefined) patch.active = data.active;
 
   await prisma.user.update({ where: { id: userId }, data: patch });
+
+  // Audit the sensitive changes (role / activation).
+  if (data.role !== undefined && data.role !== target.role) {
+    await recordAudit({
+      actorId: admin.id,
+      action: "USER_ROLE_CHANGED",
+      targetUserId: userId,
+      detail: `${roleLabels[target.role]} → ${roleLabels[data.role]}`,
+    });
+  }
+  if (data.active !== undefined && data.active !== target.active) {
+    await recordAudit({
+      actorId: admin.id,
+      action: data.active ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+      targetUserId: userId,
+    });
+  }
 
   // Revoke sessions on deactivation so access is cut immediately.
   if (data.active === false) {

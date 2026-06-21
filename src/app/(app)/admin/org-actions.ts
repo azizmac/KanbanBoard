@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Role } from "@/generated/prisma/client";
 import { canAssignRole, canManageGroup, canManageOrg, canManageRegion } from "@/lib/access";
+import { recordAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
@@ -153,5 +154,7 @@ export async function createGroupInvite(groupId: string) {
   if (!g || !(await canManageGroup(user, g))) return { ok: false as const, error: "Недостаточно прав" };
   const token = makeInviteToken("MEMBER", 7, groupId);
   const base = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  const group = await prisma.group.findUnique({ where: { id: groupId }, select: { name: true } });
+  await recordAudit({ actorId: user.id, action: "GROUP_INVITE_CREATED", detail: group?.name ?? null });
   return { ok: true as const, url: `${base}/join/${token}` };
 }

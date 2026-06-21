@@ -56,6 +56,8 @@ model User {
   notifications Notification[]
   activities    Activity[]
   pushSubscriptions PushSubscription[]
+  auditActions  AuditLog[] @relation("AuditActor")  // admin actions this user performed
+  auditTargeted AuditLog[] @relation("AuditTarget")  // admin actions taken on this user
   templatesCreated    TaskTemplate[] @relation("TemplateCreator")
   templateAssignments TaskTemplate[] @relation("TemplateAssignee")
 
@@ -396,4 +398,19 @@ model LoginNonce {
   expiresAt   DateTime
 
   @@index([expiresAt])
+}
+
+// Audit trail of sensitive admin actions (role changes, (de)activation, user
+// creation, invites) — who did what to whom. See lib/audit.ts.
+model AuditLog {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  actorId      String
+  actor        User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Cascade)
+  action       String // e.g. USER_ROLE_CHANGED, USER_DEACTIVATED, INVITE_CREATED
+  targetUserId String?
+  targetUser   User?    @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  detail       String? // human-readable, e.g. "Линейный → Региональный управляющий"
+
+  @@index([createdAt])
 }
