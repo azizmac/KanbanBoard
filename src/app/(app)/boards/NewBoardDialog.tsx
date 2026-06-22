@@ -27,10 +27,6 @@ export function NewBoardDialog({
       setError("Введите название");
       return;
     }
-    if (regions.length > 0 && !regionId) {
-      setError("Выберите регион");
-      return;
-    }
     startTransition(async () => {
       const res = await createBoard({ name: trimmed, color, regionId: regionId || null });
       if (res.ok) {
@@ -112,12 +108,18 @@ export function NewBoardDialog({
               onChange={(e) => setRegionId(e.target.value)}
               className="h-[42px] w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
             >
+              <option value="">Без региона</option>
               {regions.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
             </select>
+            {!regionId && (
+              <p className="mt-2 text-[12px] text-[var(--color-muted)]">
+                Доска без региона: не привязана к региону, доступ выдаётся через группы (директора видят её всегда).
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-4 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-3 py-2 text-[13px] text-[var(--color-muted)]">
