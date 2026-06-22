@@ -7,14 +7,11 @@ import { getDashboard } from "@/lib/dashboard-data";
 
 export const dynamic = "force-dynamic";
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "danger" }) {
+function Stat({ label, value, tone }: { label: string; value: number | string; tone?: "danger" }) {
+  const danger = tone === "danger" && typeof value === "number" && value > 0;
   return (
     <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-      <div
-        className={`text-[28px] font-bold leading-none ${
-          tone === "danger" && value > 0 ? "text-[var(--color-urgent)]" : "text-[var(--color-ink)]"
-        }`}
-      >
+      <div className={`text-[28px] font-bold leading-none ${danger ? "text-[var(--color-urgent)]" : "text-[var(--color-ink)]"}`}>
         {value}
       </div>
       <div className="mt-1.5 text-[12.5px] text-[var(--color-muted)]">{label}</div>
@@ -34,19 +31,27 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-[22px] font-bold text-[var(--color-ink)]">Сводка</h1>
-        <Link href="/templates" className="shrink-0 text-[13px] font-medium text-[var(--color-accent)] hover:underline">
-          Шаблоны →
-        </Link>
+        <div className="flex shrink-0 items-center gap-3.5">
+          {isDirector(user) && (
+            <a href="/api/export/tasks" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+              Выгрузить CSV
+            </a>
+          )}
+          <Link href="/templates" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+            Шаблоны →
+          </Link>
+        </div>
       </div>
       <p className="mt-1 text-[13.5px] text-[var(--color-muted)]">
         {isDirector(user) ? "По всем доскам" : "По вашим регионам"}
       </p>
 
       {/* Totals */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Открытых задач" value={d.totals.open} />
         <Stat label="Просрочено" value={d.totals.overdue} tone="danger" />
         <Stat label="Закрыто за 7 дней" value={d.totals.completed7d} />
+        <Stat label="Ср. время до «Готово»" value={d.cycleTimeDays != null ? `${d.cycleTimeDays} дн.` : "—"} />
         <Stat label="Досок" value={d.totals.boards} />
       </div>
 

@@ -7,6 +7,7 @@ export type DayBucket = { label: string; count: number };
 
 export type DashboardData = {
   totals: { open: number; overdue: number; completed7d: number; boards: number };
+  cycleTimeDays: number | null; // avg days from creation to «Готово» (last 7d), null if none
   perPerson: PersonLoad[];
   perBoard: BoardLoad[];
   throughput: DayBucket[]; // completions per day, last 7 days
@@ -61,9 +62,23 @@ export async function getDashboard(user: Actor): Promise<DashboardData> {
   };
   const [completed7d, completions, boardCount] = await Promise.all([
     prisma.activity.count({ where: completionWhere }),
-    prisma.activity.findMany({ where: completionWhere, select: { createdAt: true } }),
+    prisma.activity.findMany({
+      where: completionWhere,
+      select: { createdAt: true, task: { select: { createdAt: true } } },
+    }),
     prisma.board.count({ where: scope }),
   ]);
+
+  // Cycle time: average days from a task's creation to its completion event.
+  let cycleSum = 0;
+  let cycleN = 0;
+  for (const a of completions) {
+    if (a.task) {
+      cycleSum += a.createdAt.getTime() - a.task.createdAt.getTime();
+      cycleN += 1;
+    }
+  }
+  const cycleTimeDays = cycleN ? Math.round((cycleSum / cycleN / DAY) * 10) / 10 : null;
 
   // Bucket completions into the last 7 calendar days (index 6 = today).
   const startOfDay = (ms: number) => {
@@ -84,6 +99,7 @@ export async function getDashboard(user: Actor): Promise<DashboardData> {
 
   return {
     totals: { open: open.length, overdue: overdueTotal, completed7d, boards: boardCount },
+    cycleTimeDays,
     perPerson: [...people.values()].sort((a, b) => b.overdue - a.overdue || b.open - a.open),
     perBoard: [...boards.values()].sort((a, b) => b.open - a.open),
     throughput: days,
