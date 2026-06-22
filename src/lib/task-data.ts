@@ -74,6 +74,10 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailData | nu
           assignee: { select: { id: true, name: true } },
         },
       },
+      timeLogs: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, minutes: true, note: true, createdAt: true, user: { select: { id: true, name: true } } },
+      },
       activities: {
         orderBy: { createdAt: "asc" },
         include: { actor: { select: { id: true, name: true } } },
@@ -106,6 +110,15 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailData | nu
     updatedAt: task.updatedAt.toISOString(),
     archived: Boolean(task.archivedAt),
     tags: task.tags,
+    estimateMinutes: task.estimateMinutes,
+    spentMinutes: task.timeLogs.reduce((s, l) => s + l.minutes, 0),
+    timeLogs: task.timeLogs.map((l) => ({
+      id: l.id,
+      user: l.user,
+      minutes: l.minutes,
+      note: l.note,
+      createdAt: l.createdAt.toISOString(),
+    })),
     checklist: task.checklist.map((c) => ({
       id: c.id,
       text: c.text,

@@ -20,6 +20,7 @@ import type {
 } from "@/lib/types";
 import { ArchiveTaskButton } from "../../board/ArchiveTaskButton";
 import { addComment, deleteAttachment, deleteTask, updateTask } from "./actions";
+import { TimeTracking } from "./TimeTracking";
 import { AssigneePicker } from "./AssigneePicker";
 import { Checklist } from "./Checklist";
 import { TaskTags } from "./TaskTags";
@@ -330,6 +331,18 @@ export function TaskDetailClient({
           {/* Checklist */}
           <div className="mt-7">
             <Checklist taskId={task.id} initialItems={task.checklist} team={team} />
+          </div>
+
+          {/* Time tracking */}
+          <div className="mt-7">
+            <TimeTracking
+              taskId={task.id}
+              estimateMinutes={task.estimateMinutes}
+              spentMinutes={task.spentMinutes}
+              logs={task.timeLogs}
+              currentUserId={currentUser.id}
+              canManage={canDelete}
+            />
           </div>
 
           {/* Attachments */}

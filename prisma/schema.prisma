@@ -59,6 +59,7 @@ model User {
   auditActions  AuditLog[] @relation("AuditActor")  // admin actions this user performed
   auditTargeted AuditLog[] @relation("AuditTarget")  // admin actions taken on this user
   subtaskAssignments ChecklistItem[] @relation("SubtaskAssignee")
+  timeLogs           TimeLog[]       @relation("TimeLogger")
   templatesCreated    TaskTemplate[] @relation("TemplateCreator")
   templateAssignments TaskTemplate[] @relation("TemplateAssignee")
 
@@ -182,6 +183,7 @@ model Task {
   priority    Priority  @default(NORMAL)
   dueDate     DateTime?
   archivedAt  DateTime? // soft-archived: hidden from the board + counts, restorable
+  estimateMinutes Int? // planned effort; time spent = sum of timeLogs
 
   columnId String
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -201,9 +203,24 @@ model Task {
   tags        Tag[]
   checklist   ChecklistItem[]
   activities  Activity[]
+  timeLogs    TimeLog[]
 
   @@index([columnId])
   @@index([assigneeId])
+}
+
+// A logged chunk of time spent on a task by a user.
+model TimeLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TimeLogger", fields: [userId], references: [id], onDelete: Cascade)
+  minutes   Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // GitLab-style task history (system notes): who changed what, when.

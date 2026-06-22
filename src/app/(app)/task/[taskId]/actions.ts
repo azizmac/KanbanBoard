@@ -306,3 +306,40 @@ export async function setChecklistDue(itemId: string, dueDate: string | null) {
   revalidatePath(`/task/${item.taskId}`);
   return { ok: true as const };
 }
+
+// ----- Time tracking -----
+
+export async function setEstimate(taskId: string, minutes: number | null) {
+  await requireUser();
+  const val = minutes != null && minutes > 0 ? Math.min(Math.round(minutes), 100_000) : null;
+  await prisma.task.update({ where: { id: taskId }, data: { estimateMinutes: val } });
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true as const };
+}
+
+export async function logTime(taskId: string, minutes: number, note: string | null) {
+  const user = await requireUser();
+  if (!Number.isFinite(minutes) || minutes <= 0) return { ok: false as const, error: "Укажите время" };
+  const log = await prisma.timeLog.create({
+    data: { taskId, userId: user.id, minutes: Math.min(Math.round(minutes), 100_000), note: note?.trim() || null },
+    include: { user: { select: { id: true, name: true } } },
+  });
+  revalidatePath(`/task/${taskId}`);
+  return {
+    ok: true as const,
+    log: { id: log.id, user: log.user, minutes: log.minutes, note: log.note, createdAt: log.createdAt.toISOString() },
+  };
+}
+
+export async function deleteTimeLog(logId: string) {
+  const user = await requireUser();
+  const log = await prisma.timeLog.findUnique({ where: { id: logId } });
+  if (!log) return { ok: false as const };
+  // only the author or an admin may remove a time entry
+  if (log.userId !== user.id && !can(user, "deleteAnyTask")) {
+    return { ok: false as const, error: "Недостаточно прав" };
+  }
+  await prisma.timeLog.delete({ where: { id: logId } });
+  revalidatePath(`/task/${log.taskId}`);
+  return { ok: true as const };
+}

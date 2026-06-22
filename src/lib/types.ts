@@ -89,6 +89,14 @@ export type ChecklistItemData = {
   assignee: { id: string; name: string } | null;
 };
 
+export type TimeLogData = {
+  id: string;
+  user: { id: string; name: string };
+  minutes: number;
+  note: string | null;
+  createdAt: string;
+};
+
 export type ActivityData = {
   id: string;
   kind: string;
@@ -111,6 +119,9 @@ export type TaskDetailData = {
   createdAt: string;
   updatedAt: string;
   archived: boolean;
+  estimateMinutes: number | null;
+  spentMinutes: number;
+  timeLogs: TimeLogData[];
   comments: CommentData[];
   attachments: AttachmentData[];
   tags: TagData[];

@@ -23,12 +23,18 @@ export async function GET() {
       priority: true,
       dueDate: true,
       createdAt: true,
+      estimateMinutes: true,
       assignee: { select: { name: true } },
       column: { select: { name: true, board: { select: { name: true } } } },
+      timeLogs: { select: { minutes: true } },
     },
   });
 
-  const header = ["Доска", "Колонка", "Задача", "Исполнитель", "Приоритет", "Срок", "Создана"];
+  const hours = (m: number | null) => (m ? (m / 60).toFixed(1).replace(".", ",") : "");
+  const header = [
+    "Доска", "Колонка", "Задача", "Исполнитель", "Приоритет",
+    "Срок", "Создана", "Оценка, ч", "Затрачено, ч",
+  ];
   const rows = tasks.map((t) => [
     t.column.board.name,
     t.column.name,
@@ -37,6 +43,8 @@ export async function GET() {
     priorityLabels[t.priority],
     day(t.dueDate),
     day(t.createdAt),
+    hours(t.estimateMinutes),
+    hours(t.timeLogs.reduce((s, l) => s + l.minutes, 0)),
   ]);
   const csv =
     "﻿" + [header, ...rows].map((r) => r.map((c) => cell(String(c))).join(";")).join("\r\n");
