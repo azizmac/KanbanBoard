@@ -30,6 +30,15 @@ function IconMine() {
     </svg>
   );
 }
+
+function IconCalendar() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
 function IconTeam() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -97,6 +106,7 @@ export function Sidebar({
     { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
     { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
+    { href: "/calendar", label: "Календарь", icon: <IconCalendar />, match: ["/calendar"] },
     { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
     { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
     ...(isAdmin || isRegional
