@@ -28,7 +28,7 @@ const schema = z.object({
 type Input = z.input<typeof schema>;
 
 async function canManage(userBoardId: string) {
-  const board = await prisma.board.findUnique({ where: { id: userBoardId }, select: { regionId: true, ownerId: true } });
+  const board = await prisma.board.findUnique({ where: { id: userBoardId }, select: { regions: { select: { id: true } }, ownerId: true } });
   if (!board) return false;
   const user = await requireUser();
   return canManageBoard(user, board);

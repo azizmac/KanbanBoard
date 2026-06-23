@@ -26,10 +26,14 @@ function ok() {
   return { ok: true as const };
 }
 
-/** Move a board into a region (or detach with null). Director only. */
-export async function setBoardRegion(boardId: string, regionId: string | null) {
+/** Set the regions a board belongs to (replaces the set; empty = no region).
+ *  Director only. A board may span several regions (shared boards). */
+export async function setBoardRegions(boardId: string, regionIds: string[]) {
   if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
-  await prisma.board.update({ where: { id: boardId }, data: { regionId: regionId || null } });
+  await prisma.board.update({
+    where: { id: boardId },
+    data: { regions: { set: [...new Set(regionIds)].map((id) => ({ id })) } },
+  });
   revalidatePath("/admin/org");
   revalidatePath("/boards");
   return { ok: true as const };

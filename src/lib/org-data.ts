@@ -59,7 +59,8 @@ export async function getOrgAdminData(user: Actor) {
   const director = isDirector(user);
   const regionIds = director ? null : ((await manageableRegionIds(user)) ?? []);
   const regionWhere = director ? {} : { id: { in: regionIds! } };
-  const scopedWhere = director ? {} : { regionId: { in: regionIds! } };
+  const groupScope = director ? {} : { regionId: { in: regionIds! } };
+  const boardScope = director ? {} : { regions: { some: { id: { in: regionIds! } } } };
 
   const [regions, groups, users, boards, positions] = await Promise.all([
     prisma.region.findMany({
@@ -68,7 +69,7 @@ export async function getOrgAdminData(user: Actor) {
       include: { managers: { select: { id: true } }, _count: { select: { boards: true } } },
     }),
     prisma.group.findMany({
-      where: scopedWhere,
+      where: groupScope,
       orderBy: { createdAt: "asc" },
       include: { members: { select: { id: true } }, boards: { select: { id: true } } },
     }),
@@ -78,9 +79,9 @@ export async function getOrgAdminData(user: Actor) {
       select: { id: true, name: true, role: true },
     }),
     prisma.board.findMany({
-      where: scopedWhere,
+      where: boardScope,
       orderBy: { name: "asc" },
-      select: { id: true, name: true, regionId: true },
+      select: { id: true, name: true, regions: { select: { id: true } } },
     }),
     prisma.position.findMany({
       orderBy: [{ role: "asc" }, { name: "asc" }],
@@ -104,7 +105,7 @@ export async function getOrgAdminData(user: Actor) {
       boardIds: g.boards.map((b) => b.id),
     })),
     users,
-    boards,
+    boards: boards.map((b) => ({ id: b.id, name: b.name, regionIds: b.regions.map((r) => r.id) })),
   };
 }
 

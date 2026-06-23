@@ -15,7 +15,7 @@ import {
   deleteRegion,
   renameGroup,
   renameRegion,
-  setBoardRegion,
+  setBoardRegions,
   setGroupBoards,
   setGroupMembers,
   setRegionManagers,
@@ -26,7 +26,7 @@ type Opt = { id: string; name: string };
 type Region = { id: string; name: string; color: string; managerIds: string[]; boardCount: number };
 type Group = { id: string; name: string; regionId: string | null; memberIds: string[]; boardIds: string[] };
 type UserOpt = { id: string; name: string; role: Role };
-type BoardOpt = { id: string; name: string; regionId: string | null };
+type BoardOpt = { id: string; name: string; regionIds: string[] };
 type PositionOpt = { id: string; name: string; role: Role; color: string };
 
 const ALL_ROLES: Role[] = ["MEMBER", "MANAGER", "ADMIN"];
@@ -229,28 +229,26 @@ export function OrgPanel({
         </div>
       </section>
 
-      {/* Boards without a region (directors only) */}
-      {canManageRegions && boards.some((b) => !b.regionId) && (
+      {/* Boards ↔ regions (directors only) — a board may span several regions */}
+      {canManageRegions && boards.length > 0 && (
         <section className="mb-9">
-          <h2 className={sectionLabel}>Доски без региона</h2>
+          <h2 className={sectionLabel}>Доски и регионы</h2>
+          <p className="mb-3 text-[13px] text-[var(--color-muted)]">
+            Доска может относиться к нескольким регионам — управляющие всех этих регионов её видят и ведут.
+            Без региона — доступ только через группы.
+          </p>
           <div className="space-y-2">
-            {boards
-              .filter((b) => !b.regionId)
-              .map((b) => (
-                <div key={b.id} className="flex items-center gap-3 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3.5 py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{b.name}</span>
-                  <select
-                    value=""
-                    onChange={(e) => e.target.value && run(setBoardRegion(b.id, e.target.value))}
-                    className="h-8 rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 text-[13px] outline-none focus:border-[var(--color-accent)]"
-                  >
-                    <option value="">→ в регион…</option>
-                    {regions.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+            {boards.map((b) => (
+              <div key={b.id} className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3.5 py-2.5">
+                <span className="min-w-[120px] flex-1 truncate text-sm font-medium">{b.name}</span>
+                <MultiSelect
+                  all={regions.map((r) => ({ id: r.id, name: r.name }))}
+                  selected={b.regionIds}
+                  onChange={(ids) => run(setBoardRegions(b.id, ids))}
+                  addLabel="регион"
+                />
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -302,7 +300,7 @@ export function OrgPanel({
         <div className="space-y-2.5">
           {visibleGroups.map((g) => {
             const boardOpts: Opt[] = boards
-              .filter((b) => !g.regionId || b.regionId === g.regionId)
+              .filter((b) => !g.regionId || b.regionIds.includes(g.regionId))
               .map((b) => ({ id: b.id, name: b.name }));
             return (
               <div key={g.id} className="rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-3.5">

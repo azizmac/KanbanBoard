@@ -20,7 +20,7 @@ export default async function BoardPage({
     getBoard(user, boardId),
     getBoardOptions(user),
     listManageableRegions(user), // [] for staff → they create personal (region-less) boards
-    prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } }),
+    prisma.board.findUnique({ where: { id: boardId }, select: { regions: { select: { id: true } }, ownerId: true } }),
     prisma.user.count({ where: { id: user.id, mutedBoards: { some: { id: boardId } } } }),
   ]);
 

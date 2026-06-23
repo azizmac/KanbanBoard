@@ -15,7 +15,7 @@ export async function manageableBoards(user: Actor) {
   const regionIds = await manageableRegionIds(user);
   if (!regionIds || regionIds.length === 0) return [];
   return prisma.board.findMany({
-    where: { regionId: { in: regionIds } },
+    where: { regions: { some: { id: { in: regionIds } } } },
     orderBy: { createdAt: "asc" },
     select: boardSelect,
   });

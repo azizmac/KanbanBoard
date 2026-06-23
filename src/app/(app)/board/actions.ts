@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canCreateBoardInRegion, canManageBoard } from "@/lib/access";
+import { canCreateBoardInRegions, canManageBoard } from "@/lib/access";
 import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -69,27 +69,28 @@ const DEFAULT_COLUMNS = ["Бэклог", "В работе", "На ревью", "
 const boardSchema = z.object({
   name: z.string().trim().min(1, "Введите название").max(120),
   color: z.string().trim().max(20).optional(),
-  regionId: z.string().nullable().optional(),
+  regionIds: z.array(z.string()).optional(),
 });
 
-// Anyone can create a personal board (no region). A board in a region needs
-// rights for that region (directors anywhere, regionals in theirs).
+// Anyone can create a personal board (no regions). A board attached to regions
+// needs rights for ALL of them (directors anywhere, regionals in theirs). A board
+// may span several regions — managers of any of them then see + manage it.
 export async function createBoard(input: z.input<typeof boardSchema>) {
   const user = await requireUser();
   const parsed = boardSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Ошибка" };
   }
-  const regionId = parsed.data.regionId ?? null;
-  if (regionId && !(await canCreateBoardInRegion(user, regionId))) {
-    return { ok: false as const, error: "Нет прав на создание доски в этом регионе" };
+  const regionIds = [...new Set(parsed.data.regionIds ?? [])];
+  if (!(await canCreateBoardInRegions(user, regionIds))) {
+    return { ok: false as const, error: "Нет прав на создание доски в этих регионах" };
   }
 
   const board = await prisma.board.create({
     data: {
       name: parsed.data.name,
       color: parsed.data.color ?? "iris",
-      regionId,
+      regions: regionIds.length ? { connect: regionIds.map((id) => ({ id })) } : undefined,
       ownerId: user.id, // the creator owns it (esp. personal boards)
       columns: { create: DEFAULT_COLUMNS.map((name, position) => ({ name, position })) },
     },
@@ -105,7 +106,7 @@ export async function deleteBoard(boardId: string) {
   const user = await requireUser();
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { regionId: true, ownerId: true },
+    select: { regions: { select: { id: true } }, ownerId: true },
   });
   if (!board || !(await canManageBoard(user, board))) {
     return { ok: false as const, error: "Недостаточно прав" };
@@ -118,7 +119,7 @@ export async function deleteBoard(boardId: string) {
 
 export async function unlinkBoardTelegram(boardId: string) {
   const user = await requireUser();
-  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regionId: true, ownerId: true } });
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { regions: { select: { id: true } }, ownerId: true } });
   if (!board || !(await canManageBoard(user, board))) {
     return { ok: false as const, error: "Недостаточно прав" };
   }

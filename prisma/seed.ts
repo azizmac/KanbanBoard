@@ -86,7 +86,7 @@ async function main() {
       data: {
         name,
         color,
-        regionId,
+        regions: { connect: { id: regionId } },
         columns: { create: COLUMNS.map((n, position) => ({ name: n, position })) },
       },
       include: { columns: { orderBy: { position: "asc" } } },

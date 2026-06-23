@@ -17,7 +17,7 @@ export function NewBoardDialog({
   const router = useRouter();
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(BOARD_TINT_KEYS[0]);
-  const [regionId, setRegionId] = useState<string>(regions[0]?.id ?? "");
+  const [regionIds, setRegionIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -28,7 +28,7 @@ export function NewBoardDialog({
       return;
     }
     startTransition(async () => {
-      const res = await createBoard({ name: trimmed, color, regionId: regionId || null });
+      const res = await createBoard({ name: trimmed, color, regionIds });
       if (res.ok) {
         onClose();
         router.push(`/board/${res.id}`);
@@ -101,23 +101,30 @@ export function NewBoardDialog({
         {regions.length > 0 ? (
           <>
             <label className="mb-1.5 mt-4 block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--color-faint)]">
-              Регион
+              Регионы <span className="font-normal normal-case text-[var(--color-faint)]">— можно несколько</span>
             </label>
-            <select
-              value={regionId}
-              onChange={(e) => setRegionId(e.target.value)}
-              className="h-[42px] w-full rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
-            >
-              <option value="">Без региона</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-            {!regionId && (
+            <div className="flex flex-wrap gap-1.5">
+              {regions.map((r) => {
+                const on = regionIds.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRegionIds(on ? regionIds.filter((x) => x !== r.id) : [...regionIds, r.id])}
+                    className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
+                      on
+                        ? "bg-[var(--color-accent)] text-white"
+                        : "bg-[var(--color-surface-warm)] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                    }`}
+                  >
+                    {r.name}
+                  </button>
+                );
+              })}
+            </div>
+            {regionIds.length === 0 && (
               <p className="mt-2 text-[12px] text-[var(--color-muted)]">
-                Доска без региона: не привязана к региону, доступ выдаётся через группы (директора видят её всегда).
+                Без региона: доступ выдаётся через группы (директора видят доску всегда).
               </p>
             )}
           </>

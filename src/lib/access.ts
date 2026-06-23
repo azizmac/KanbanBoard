@@ -61,7 +61,8 @@ export async function visibleBoardWhere(user: Actor): Promise<Prisma.BoardWhereI
       where: { managers: { some: { id: user.id } } },
       select: { id: true },
     });
-    return { OR: [{ regionId: { in: regions.map((r) => r.id) } }, ...base] };
+    const ids = regions.map((r) => r.id);
+    return { OR: [{ regions: { some: { id: { in: ids } } } }, ...base] };
   }
 
   // staff: only their own boards + boards they've been added to
@@ -104,20 +105,25 @@ export async function canManageGroup(user: Actor, group: { regionId: string | nu
   return canManageRegion(user, group.regionId);
 }
 
-export async function canCreateBoardInRegion(user: Actor, regionId: string | null): Promise<boolean> {
+/** Can the user attach a board to ALL of these regions? Director → any; regional
+ *  → only regions they manage; empty list = a personal/region-less board (anyone). */
+export async function canCreateBoardInRegions(user: Actor, regionIds: string[]): Promise<boolean> {
   if (isDirector(user)) return true;
-  if (!isRegional(user) || !regionId) return false;
-  const ids = await manageableRegionIds(user);
-  return Boolean(ids && ids.includes(regionId));
+  if (regionIds.length === 0) return true; // personal / region-less board
+  if (!isRegional(user)) return false;
+  const ids = (await manageableRegionIds(user)) ?? [];
+  return regionIds.every((r) => ids.includes(r));
 }
 
-/** Can the user manage a given board (settings, delete, groups)? */
+/** Can the user manage a given board (settings, delete, columns, archive)?
+ *  Director, the board's owner, or a manager of ANY of its regions. */
 export async function canManageBoard(
   user: Actor,
-  board: { regionId: string | null; ownerId?: string | null },
+  board: { regions: { id: string }[]; ownerId?: string | null },
 ): Promise<boolean> {
   if (isDirector(user)) return true;
   if (board.ownerId && board.ownerId === user.id) return true; // own personal board
   if (!isRegional(user)) return false;
-  return canCreateBoardInRegion(user, board.regionId);
+  const ids = await manageableRegionIds(user);
+  return Boolean(ids && board.regions.some((r) => ids.includes(r.id)));
 }

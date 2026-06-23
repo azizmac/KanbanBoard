@@ -88,7 +88,7 @@ model Region {
   name      String
   color     String   @default("iris")
   createdAt DateTime @default(now())
-  boards    Board[]
+  boards    Board[]  @relation("BoardRegions")
   groups    Group[]
   managers  User[]   @relation("RegionManagers")
 }
@@ -140,11 +140,11 @@ model Board {
   tags      Tag[]
   templates TaskTemplate[]
 
-  // org: the region this board lives in, and the access groups attached to it
-  regionId String?
-  region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
-  groups   Group[] @relation("BoardGroups")
-  mutedBy  User[]  @relation("BoardMutes") // users who silenced this board
+  // org: regions this board belongs to — a shared board can span several
+  // (managers of ANY of them see + manage it); plus the access groups attached.
+  regions  Region[] @relation("BoardRegions")
+  groups   Group[]  @relation("BoardGroups")
+  mutedBy  User[]   @relation("BoardMutes") // users who silenced this board
 
   // personal boards: a self-signup member owns the boards they create
   ownerId String?
@@ -152,8 +152,6 @@ model Board {
 
   // a Telegram group chat linked to this board (for /tasks digests)
   telegramChatId String? @unique
-
-  @@index([regionId])
 }
 
 model Column {

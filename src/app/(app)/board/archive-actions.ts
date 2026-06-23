@@ -17,7 +17,7 @@ async function canManage(boardId: string) {
   const user = await requireUser();
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { regionId: true, ownerId: true },
+    select: { regions: { select: { id: true } }, ownerId: true },
   });
   return board ? canManageBoard(user, board) : false;
 }

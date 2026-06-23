@@ -19,7 +19,7 @@ async function loadManageable(boardId: string) {
   const user = await requireUser();
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { id: true, regionId: true, ownerId: true },
+    select: { id: true, regions: { select: { id: true } }, ownerId: true },
   });
   if (!board || !(await canManageBoard(user, board))) return null;
   return board;
