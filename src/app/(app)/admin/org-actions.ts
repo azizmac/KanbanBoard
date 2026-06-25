@@ -6,6 +6,7 @@ import type { Role } from "@/generated/prisma/client";
 import { canAssignRole, canManageGroup, canManageOrg, canManageRegion } from "@/lib/access";
 import { recordAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
+import { listSalesPoints, parseIikoPoint } from "@/lib/iiko/client";
 import { makeInviteToken } from "@/lib/invite";
 import { prisma } from "@/lib/prisma";
 
@@ -212,4 +213,78 @@ export async function deleteRestaurant(id: string) {
   if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
   await prisma.restaurant.delete({ where: { id } });
   return ok();
+}
+
+// Colours cycled across auto-created regions, for visual variety.
+const REGION_PALETTE = ["iris", "blue", "green", "amber", "pink", "purple", "gray"];
+
+/** Bulk-onboard iiko sales points as restaurants. The region is derived from the
+ *  city embedded in each point's name (see parseIikoPoint), auto-creating regions
+ *  as needed. `jurFilter` restricts to one legal entity so a shared/franchise iiko
+ *  doesn't pull in other tenants' points; falls back to IIKO_JURPERSON_FILTER.
+ *  Idempotent: points already linked (by iikoDepartmentId) are skipped, so it
+ *  doubles as a "sync" — re-running only adds what's new. Director only. */
+export async function importRestaurantsFromIiko(jurFilterRaw: string) {
+  const actor = await director();
+  if (!actor) return { ok: false as const, error: "Недостаточно прав" };
+  const filter = (jurFilterRaw || process.env.IIKO_JURPERSON_FILTER || "").trim();
+  if (!filter) {
+    return { ok: false as const, error: "Укажите юрлицо (напр. «ФРЕШ ДВ») — иначе подтянутся чужие точки франшизы" };
+  }
+
+  let points;
+  try {
+    points = await listSalesPoints();
+  } catch (e) {
+    return { ok: false as const, error: "iiko недоступна: " + (e as Error).message };
+  }
+
+  const needle = filter.toLowerCase();
+  const mine = points.filter((p) => !p.disabled && p.jur && p.jur.toLowerCase().includes(needle));
+  if (mine.length === 0) return { ok: false as const, error: `Активных точек под «${filter}» не найдено` };
+
+  const existing = new Set(
+    (await prisma.restaurant.findMany({ select: { iikoDepartmentId: true } })).map((r) => r.iikoDepartmentId),
+  );
+  const regionByName = new Map(
+    (await prisma.region.findMany({ select: { id: true, name: true } })).map((r) => [r.name.trim().toLowerCase(), r.id]),
+  );
+
+  let added = 0;
+  let skipped = 0;
+  let newRegions = 0;
+  for (const p of mine) {
+    if (existing.has(p.name)) {
+      skipped++;
+      continue;
+    }
+    const { city, point } = parseIikoPoint(p.name);
+    const regionLabel = city ?? "Прочее"; // Restaurant.regionId is required — unparsed points land in «Прочее»
+    let regionId = regionByName.get(regionLabel.toLowerCase());
+    if (!regionId) {
+      const created = await prisma.region.create({
+        data: { name: regionLabel, color: REGION_PALETTE[newRegions % REGION_PALETTE.length] },
+      });
+      regionId = created.id;
+      regionByName.set(regionLabel.toLowerCase(), regionId);
+      newRegions++;
+    }
+    const displayName = (city ? `${city} · ${point}` : point).slice(0, 80);
+    try {
+      await prisma.restaurant.create({ data: { name: displayName, regionId, iikoDepartmentId: p.name } });
+      existing.add(p.name);
+      added++;
+    } catch {
+      skipped++; // unique-constraint race or bad row — don't abort the whole import
+    }
+  }
+
+  await recordAudit({
+    actorId: actor.id,
+    action: "IIKO_IMPORT",
+    detail: `+${added} точек, +${newRegions} регионов (фильтр: ${filter})`,
+  });
+  revalidatePath("/admin/org");
+  revalidatePath("/boards");
+  return { ok: true as const, summary: { added, skipped, newRegions, total: mine.length } };
 }

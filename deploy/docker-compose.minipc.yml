@@ -45,6 +45,7 @@ services:
       IIKO_LOGIN: ${IIKO_LOGIN:-}
       IIKO_PASS_SHA1: ${IIKO_PASS_SHA1:-}
       IIKO_ORDER_TYPE_MAP: ${IIKO_ORDER_TYPE_MAP:-}
+      IIKO_JURPERSON_FILTER: ${IIKO_JURPERSON_FILTER:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

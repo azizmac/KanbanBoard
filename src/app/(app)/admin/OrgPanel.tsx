@@ -15,6 +15,7 @@ import {
   deletePosition,
   deleteRegion,
   deleteRestaurant,
+  importRestaurantsFromIiko,
   updateRestaurant,
   renameGroup,
   renameRegion,
@@ -112,6 +113,9 @@ export function OrgPanel({
   const [newPositionColor, setNewPositionColor] = useState<string>("gray");
   const [newResto, setNewResto] = useState({ name: "", regionId: "", dept: "" });
   const [iikoDepts, setIikoDepts] = useState<{ id: string; name: string }[]>([]);
+  const [jurFilter, setJurFilter] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
 
   // Lazy-load iiko sales points so the director picks the exact OLAP department
   // name from a list instead of typing it. Director-only endpoint.
@@ -146,6 +150,27 @@ export function OrgPanel({
       const res = await p;
       if (!res.ok) setError(res.error ?? "Ошибка");
       else setError(null);
+      router.refresh();
+    });
+  }
+
+  function runImport() {
+    setImporting(true);
+    setImportMsg(null);
+    startTransition(async () => {
+      const res = await importRestaurantsFromIiko(jurFilter.trim());
+      setImporting(false);
+      if (!res.ok || !res.summary) {
+        setError(res.error ?? "Ошибка импорта");
+        return;
+      }
+      setError(null);
+      const s = res.summary;
+      setImportMsg(
+        s.added > 0
+          ? `Добавлено ${s.added} точек (+${s.newRegions} регионов). Пропущено (уже есть): ${s.skipped}.`
+          : `Новых точек нет — всё уже привязано (проверено ${s.total}).`,
+      );
       router.refresh();
     });
   }
@@ -453,6 +478,33 @@ export function OrgPanel({
           Привяжи точку к региону и её ID подразделения в iiko OLAP. Региональный управляющий видит в
           «Статистике» только точки своих регионов, директор — все.
         </p>
+
+        {/* One-click onboarding: pull all points for a legal entity from iiko,
+            auto-deriving the region from the city in each point's name. */}
+        <div className="mb-3 rounded-[13px] border border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-3.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-semibold">Авто-импорт из iiko</span>
+            <input
+              value={jurFilter}
+              onChange={(e) => setJurFilter(e.target.value)}
+              placeholder="юрлицо, напр. ФРЕШ ДВ"
+              className="h-9 w-[200px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+            />
+            <button
+              onClick={runImport}
+              disabled={importing}
+              className="h-9 rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {importing ? "Импорт…" : "Импортировать точки"}
+            </button>
+          </div>
+          <p className="mt-2 text-[12px] text-[var(--color-muted)]">
+            Регион берётся из города в названии точки («ПИМС <b>Город</b> — Точка»), новые регионы создаются
+            автоматически. Юрлицо нужно, чтобы не подтянуть чужие точки франшизы. Повторный запуск добавит
+            только новые точки.
+          </p>
+          {importMsg && <p className="mt-2 text-[13px] font-medium text-[var(--color-success)]">{importMsg}</p>}
+        </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] p-3.5">
           <input

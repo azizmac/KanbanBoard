@@ -81,3 +81,49 @@ export async function listDepartments(): Promise<IikoDept[]> {
   out.sort((a, b) => a.name.localeCompare(b.name, "ru"));
   return out;
 }
+
+/** Parse the city + clean point name out of an iiko department name.
+ *  Convention in this network: "ПИМС <Город> - <Точка> (<ЮрЛицо>)".
+ *  The separator is a dash *surrounded by spaces*, so a hyphen inside the city
+ *  ("Южно-Сахалинск") or point ("Пр-кт Красного Знамени") is preserved.
+ *  Returns city=null when the name doesn't follow the convention. */
+export function parseIikoPoint(rawName: string): { city: string | null; point: string } {
+  const name = rawName.trim();
+  const m = name.match(/^Пимс\s+(.+?)\s+[-–—]\s+(.+?)\s*(?:\(.*\))?\s*$/i);
+  if (!m) return { city: null, point: name };
+  return { city: m[1].trim(), point: m[2].trim() };
+}
+
+export type IikoSalesPoint = { name: string; jur: string | null; disabled: boolean };
+
+/** All sales points (type=DEPARTMENT) with their parent legal entity (JURPERSON)
+ *  name and a "disabled" flag (iiko marks retired points with a "###" prefix and
+ *  uses "(под будущие точки)" placeholders). Powers the «Импорт из iiko» action,
+ *  which filters by legal entity so a shared/franchise iiko doesn't pull in other
+ *  tenants' points. */
+export async function listSalesPoints(): Promise<IikoSalesPoint[]> {
+  if (!iikoConfigured()) return [];
+  const token = await getToken();
+  const res = await fetch(`${BASE}/resto/api/corporation/departments?key=${token}&revisionFrom=-1`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`iiko departments failed: ${res.status}`);
+  const xml = await res.text();
+  // Index every node by id so a DEPARTMENT can resolve its parent JURPERSON name.
+  const nodes = new Map<string, { name: string; type: string; parentId: string | null }>();
+  for (const m of xml.matchAll(/<corporateItemDto>([\s\S]*?)<\/corporateItemDto>/g)) {
+    const b = m[1];
+    const id = b.match(/<id>(.*?)<\/id>/)?.[1];
+    if (!id) continue;
+    const name = unescapeXml(b.match(/<name>([\s\S]*?)<\/name>/)?.[1] ?? "");
+    const type = b.match(/<type>(.*?)<\/type>/)?.[1] ?? "";
+    const parentId = b.match(/<parentId>(.*?)<\/parentId>/)?.[1] ?? null;
+    nodes.set(id, { name, type, parentId });
+  }
+  const out: IikoSalesPoint[] = [];
+  for (const n of nodes.values()) {
+    if (n.type !== "DEPARTMENT") continue;
+    const parent = n.parentId ? nodes.get(n.parentId) : null;
+    const disabled = /^###/.test(n.name) || /под будущие/i.test(n.name);
+    out.push({ name: n.name, jur: parent?.name ?? null, disabled });
+  }
+  return out;
+}

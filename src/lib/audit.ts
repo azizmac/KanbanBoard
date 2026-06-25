@@ -8,6 +8,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   USER_CREATED: "создал пользователя",
   INVITE_CREATED: "создал ссылку-приглашение",
   GROUP_INVITE_CREATED: "создал приглашение в группу",
+  IIKO_IMPORT: "импортировал точки из iiko",
 };
 
 export async function recordAudit(input: {

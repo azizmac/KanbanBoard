@@ -62,12 +62,13 @@ jobs:
       - name: Append iiko config
         shell: powershell
         run: |
-          $lines = "`nIIKO_BASE_URL=$env:IIKO_BASE_URL`nIIKO_LOGIN=$env:IIKO_LOGIN`nIIKO_PASS_SHA1=$env:IIKO_PASS_SHA1`nIIKO_ORDER_TYPE_MAP=$env:IIKO_ORDER_TYPE_MAP`n"
+          $lines = "`nIIKO_BASE_URL=$env:IIKO_BASE_URL`nIIKO_LOGIN=$env:IIKO_LOGIN`nIIKO_PASS_SHA1=$env:IIKO_PASS_SHA1`nIIKO_ORDER_TYPE_MAP=$env:IIKO_ORDER_TYPE_MAP`nIIKO_JURPERSON_FILTER=$env:IIKO_JURPERSON_FILTER`n"
           [System.IO.File]::AppendAllText("$(Get-Location)\deploy\.env.prod", $lines, [System.Text.Encoding]::UTF8)
         env:
-          # host + order-map can live in EITHER the Variables or Secrets tab
+          # host + order-map + legal-entity filter can live in EITHER the Variables or Secrets tab
           IIKO_BASE_URL: ${{ vars.IIKO_BASE_URL || secrets.IIKO_BASE_URL }}
           IIKO_ORDER_TYPE_MAP: ${{ vars.IIKO_ORDER_TYPE_MAP || secrets.IIKO_ORDER_TYPE_MAP }}
+          IIKO_JURPERSON_FILTER: ${{ vars.IIKO_JURPERSON_FILTER || secrets.IIKO_JURPERSON_FILTER }}
           # credentials — Secrets only
           IIKO_LOGIN: ${{ secrets.IIKO_LOGIN }}
           IIKO_PASS_SHA1: ${{ secrets.IIKO_PASS_SHA1 }}
