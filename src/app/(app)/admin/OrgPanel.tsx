@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { roleLabelsShort } from "@/lib/constants";
 import { TAG_TINT_KEYS, tint } from "@/lib/tints";
 import {
@@ -111,6 +111,17 @@ export function OrgPanel({
   const [newPositionRole, setNewPositionRole] = useState<Role>("MEMBER");
   const [newPositionColor, setNewPositionColor] = useState<string>("gray");
   const [newResto, setNewResto] = useState({ name: "", regionId: "", dept: "" });
+  const [iikoDepts, setIikoDepts] = useState<{ id: string; name: string }[]>([]);
+
+  // Lazy-load iiko sales points so the director picks the exact OLAP department
+  // name from a list instead of typing it. Director-only endpoint.
+  useEffect(() => {
+    if (!canManageRegions) return;
+    fetch("/api/iiko/departments")
+      .then((r) => r.json())
+      .then((d) => setIikoDepts(d.departments ?? []))
+      .catch(() => {});
+  }, [canManageRegions]);
   const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
   const [groupFilter, setGroupFilter] = useState<string>("ALL"); // "ALL" | "NONE" | regionId
 
@@ -463,9 +474,15 @@ export function OrgPanel({
           <input
             value={newResto.dept}
             onChange={(e) => setNewResto({ ...newResto, dept: e.target.value })}
-            placeholder="ID подразделения iiko"
-            className="h-9 w-[200px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 font-mono text-[12.5px] outline-none focus:border-[var(--color-accent)]"
+            list="iiko-depts"
+            placeholder={iikoDepts.length ? "Подразделение iiko (выбор из списка)" : "Подразделение iiko"}
+            className="h-9 w-[280px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-[13px] outline-none focus:border-[var(--color-accent)]"
           />
+          <datalist id="iiko-depts">
+            {iikoDepts.map((d) => (
+              <option key={d.id} value={d.name} />
+            ))}
+          </datalist>
           <button
             onClick={() =>
               newResto.name.trim() && newResto.regionId && newResto.dept.trim() &&
@@ -496,9 +513,10 @@ export function OrgPanel({
               </select>
               <input
                 defaultValue={rt.iikoDepartmentId}
+                list="iiko-depts"
                 onBlur={(e) => e.target.value.trim() && e.target.value !== rt.iikoDepartmentId && run(updateRestaurant(rt.id, { iikoDepartmentId: e.target.value.trim() }))}
-                title="ID подразделения в iiko OLAP"
-                className="h-8 w-[190px] rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 font-mono text-[12px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)]"
+                title="Подразделение iiko (точное название из OLAP)"
+                className="h-8 w-[230px] rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 text-[12.5px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)]"
               />
               <button
                 onClick={() => run(updateRestaurant(rt.id, { active: !rt.active }))}

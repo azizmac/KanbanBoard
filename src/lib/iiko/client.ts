@@ -34,10 +34,10 @@ async function getToken(): Promise<string> {
 export type OlapRow = Record<string, string | number>;
 
 export type OlapBody = {
-  reportType: "SALES" | "DELETIONS" | "TRANSACTIONS";
+  reportType: "SALES" | "TRANSACTIONS" | "STOCK" | "DELIVERIES";
   groupByRowFields: string[];
   aggregateFields: string[];
-  filter: Record<string, unknown>;
+  filters: Record<string, unknown>; // iikoServer OLAP v2 expects `filters` (plural)
 };
 
 /** Low-level OLAP v2 request. Retries once if the cached token has expired. */
@@ -56,4 +56,28 @@ export async function olap(body: OlapBody, _retry = false): Promise<OlapRow[]> {
   if (!res.ok) throw new Error(`iiko olap failed: ${res.status}`);
   const json = (await res.json()) as { data?: OlapRow[] };
   return json.data ?? [];
+}
+
+export type IikoDept = { id: string; name: string };
+
+const unescapeXml = (s: string) =>
+  s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'");
+
+/** Sales points (type=DEPARTMENT) from the corporation tree. The `name` is what
+ *  OLAP returns in the `Department` column, so it's what we store/match against. */
+export async function listDepartments(): Promise<IikoDept[]> {
+  if (!iikoConfigured()) return [];
+  const token = await getToken();
+  const res = await fetch(`${BASE}/resto/api/corporation/departments?key=${token}&revisionFrom=-1`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`iiko departments failed: ${res.status}`);
+  const xml = await res.text();
+  const out: IikoDept[] = [];
+  for (const m of xml.matchAll(/<corporateItemDto>([\s\S]*?)<\/corporateItemDto>/g)) {
+    if (!/<type>DEPARTMENT<\/type>/.test(m[1])) continue;
+    const id = m[1].match(/<id>(.*?)<\/id>/)?.[1];
+    const name = m[1].match(/<name>(.*?)<\/name>/)?.[1];
+    if (id && name) out.push({ id, name: unescapeXml(name) });
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  return out;
 }

@@ -11,7 +11,7 @@ export function salesByDepartment(from: Date, to: Date): Promise<OlapRow[]> {
     reportType: "SALES",
     groupByRowFields: ["Department", "OrderType"],
     aggregateFields: ["DishDiscountSumInt", "UniqOrderId", "GuestNum", "ProductCostBase.ProductCost"],
-    filter: {
+    filters: {
       "OpenDate.Typed": { filterType: "DateRange", periodType: "CUSTOM", from: ymd(from), to: ymd(to) },
       DeletedWithWriteoff: {
         filterType: "ExcludeValues",
@@ -27,21 +27,28 @@ export function revenueTrend(from: Date, to: Date, byHour = false): Promise<Olap
     reportType: "SALES",
     groupByRowFields: ["Department", byHour ? "HourOpen" : "OpenDate.Typed"],
     aggregateFields: ["DishDiscountSumInt"],
-    filter: { "OpenDate.Typed": { filterType: "DateRange", periodType: "CUSTOM", from: ymd(from), to: ymd(to) } },
+    filters: { "OpenDate.Typed": { filterType: "DateRange", periodType: "CUSTOM", from: ymd(from), to: ymd(to) } },
   });
 }
 
-/** Write-offs — a separate OLAP report. */
-export function writeoffs(from: Date, to: Date): Promise<OlapRow[]> {
-  return olap({
-    reportType: "DELETIONS",
-    groupByRowFields: ["Department"],
-    aggregateFields: ["DishDiscountSumInt"],
-    filter: {
-      "OpenDate.Typed": { filterType: "DateRange", periodType: "CUSTOM", from: ymd(from), to: ymd(to) },
-      DeletedWithWriteoff: { filterType: "IncludeValues", values: ["DELETED_WITH_WRITEOFF"] },
-    },
-  });
+/** Write-offs: SALES rows that ARE write-off deletions (there is no DELETIONS
+ *  report type — OLAP v2 has SALES/STOCK/TRANSACTIONS/DELIVERIES). Resilient:
+ *  returns [] on error so a write-off quirk can't zero the whole dashboard. */
+export async function writeoffs(from: Date, to: Date): Promise<OlapRow[]> {
+  try {
+    return await olap({
+      reportType: "SALES",
+      groupByRowFields: ["Department"],
+      aggregateFields: ["DishDiscountSumInt"],
+      filters: {
+        "OpenDate.Typed": { filterType: "DateRange", periodType: "CUSTOM", from: ymd(from), to: ymd(to) },
+        DeletedWithWriteoff: { filterType: "IncludeValues", values: ["DELETED_WITH_WRITEOFF"] },
+      },
+    });
+  } catch (e) {
+    console.error("[iiko] writeoffs failed:", (e as Error).message);
+    return [];
+  }
 }
 
 /** Map an iiko order-type name to a design channel. Configurable per install. */
