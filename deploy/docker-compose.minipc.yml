@@ -40,6 +40,11 @@ services:
       S3_REGION: ${S3_REGION}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      # iiko «Статистика» — set via GitHub Secrets/Variables (see deploy.yml).
+      IIKO_BASE_URL: ${IIKO_BASE_URL:-}
+      IIKO_LOGIN: ${IIKO_LOGIN:-}
+      IIKO_PASS_SHA1: ${IIKO_PASS_SHA1:-}
+      IIKO_ORDER_TYPE_MAP: ${IIKO_ORDER_TYPE_MAP:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
