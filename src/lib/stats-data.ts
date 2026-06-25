@@ -8,7 +8,8 @@ import {
 } from "./iiko/reports";
 import { prisma } from "./prisma";
 
-export type Period = "day" | "week" | "month";
+export type Period = "day" | "week" | "month" | "custom";
+export type CustomRange = { from: string; to: string }; // YYYY-MM-DD
 export type Channels = { hall: number; delivery: number; pickup: number };
 
 export type PointStat = {
@@ -35,13 +36,21 @@ export type PointStat = {
 
 export type StatsData = {
   period: Period;
+  from: string; // ISO — start of the reporting range actually used
+  to: string; // ISO — end of the reporting range
   generatedAt: string;
   iikoOk: boolean; // false → iiko not configured or unreachable (numbers are zeroed)
   points: PointStat[];
   regions: { id: string; name: string }[];
 };
 
-function ranges(period: Period) {
+function ranges(period: Period, custom?: CustomRange) {
+  if (period === "custom" && custom) {
+    const from = new Date(`${custom.from}T00:00:00`);
+    const to = new Date(`${custom.to}T23:59:59`);
+    const span = Math.max(86_400_000, to.getTime() - from.getTime());
+    return { from, to, prevFrom: new Date(from.getTime() - span), prevTo: new Date(from) };
+  }
   const to = new Date();
   const from = new Date(to);
   if (period === "day") from.setDate(to.getDate() - 1);
@@ -83,7 +92,9 @@ function zeroPoints(restaurants: Resto[]): PointStat[] {
   }));
 }
 
-export async function getStats(user: Actor, period: Period): Promise<StatsData> {
+export async function getStats(user: Actor, period: Period, custom?: CustomRange): Promise<StatsData> {
+  const { from, to, prevFrom, prevTo } = ranges(period, custom);
+
   const restaurants = (await prisma.restaurant.findMany({
     where: visibleRestaurantWhere(user),
     orderBy: { name: "asc" },
@@ -93,6 +104,8 @@ export async function getStats(user: Actor, period: Period): Promise<StatsData> 
   const regions = [...new Map(restaurants.map((r) => [r.region.id, r.region])).values()];
   const base = (iikoOk: boolean, points: PointStat[]): StatsData => ({
     period,
+    from: from.toISOString(),
+    to: to.toISOString(),
     generatedAt: new Date().toISOString(),
     iikoOk,
     points,
@@ -103,12 +116,14 @@ export async function getStats(user: Actor, period: Period): Promise<StatsData> 
   if (restaurants.length === 0) return base(true, []);
   if (!iikoConfigured()) return base(false, zeroPoints(restaurants));
 
-  const cacheKey = `${period}|${restaurants.map((r) => r.iikoDepartmentId).sort().join(",")}`;
+  // Key on the *stable* range (period name, or the custom from–to) — never the
+  // live `from/to`, which carries millisecond drift and would defeat the cache.
+  const rangeKey = period === "custom" && custom ? `custom:${custom.from}_${custom.to}` : period;
+  const cacheKey = `${rangeKey}|${restaurants.map((r) => r.iikoDepartmentId).sort().join(",")}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.data;
 
   const byDept = new Map(restaurants.map((r) => [r.iikoDepartmentId, r]));
-  const { from, to, prevFrom, prevTo } = ranges(period);
 
   try {
     const [salesCur, salesPrev, trendCur, trendPrev, woCur, woPrev] = await Promise.all([

@@ -51,7 +51,12 @@ export async function getMyWork(
       })
     : [];
 
-  return { assigned: assigned.map(toMyTaskRow), mentioned: mentioned.map(toMyTaskRow) };
+  // Tasks sitting in a «Готово» column are completed — drop them so "my work"
+  // stays focused on what's still open.
+  return {
+    assigned: assigned.map(toMyTaskRow).filter((t) => !t.done),
+    mentioned: mentioned.map(toMyTaskRow).filter((t) => !t.done),
+  };
 }
 
 export async function getTaskDetail(taskId: string): Promise<TaskDetailData | null> {

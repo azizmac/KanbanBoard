@@ -16,9 +16,54 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: "week", label: "Неделя" },
   { key: "month", label: "Месяц" },
 ];
-const periodSub: Record<Period, string> = { day: "vs вчера", week: "vs прошлая неделя", month: "vs прошлый мес." };
+const periodSub: Record<Period, string> = {
+  day: "vs вчера",
+  week: "vs прошлая неделя",
+  month: "vs прошлый мес.",
+  custom: "vs пред. период",
+};
+const periodWords: Record<Period, string> = { day: "день", week: "неделю", month: "месяц", custom: "период" };
 const FOODCOST_TARGET = 32;
 const LABOR_TARGET = 24;
+
+/** Human label for the reporting range, e.g. "26 мая – 25 июня 2026". */
+function formatRange(fromISO?: string, toISO?: string) {
+  if (!fromISO || !toISO) return "";
+  const f = new Date(fromISO);
+  const t = new Date(toISO);
+  const full: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" };
+  if (f.toDateString() === t.toDateString()) return t.toLocaleDateString("ru-RU", full);
+  const short: Intl.DateTimeFormatOptions =
+    f.getFullYear() === t.getFullYear() ? { day: "numeric", month: "short" } : full;
+  return `${f.toLocaleDateString("ru-RU", short)} – ${t.toLocaleDateString("ru-RU", full)}`;
+}
+/** YYYY-MM-DD in local time (for prefilling the date inputs). */
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/* ---------- detail-table sorting ---------- */
+type SortKey = "name" | "regionName" | "revenue" | "delta" | "avgCheck" | "checks" | "foodcostPct" | "laborPct";
+function sortValue(p: PointStat, key: SortKey): number | string {
+  switch (key) {
+    case "name":
+      return p.name;
+    case "regionName":
+      return p.regionName;
+    case "revenue":
+      return p.revenue;
+    case "delta":
+      return dPct(p.revenue, p.prevRevenue);
+    case "avgCheck":
+      return p.checks > 0 ? p.revenue / p.checks : 0;
+    case "checks":
+      return p.checks;
+    case "foodcostPct":
+      return p.foodcostPct;
+    case "laborPct":
+      return p.laborPct;
+  }
+}
 
 /* ---------- small bits ---------- */
 function DeltaChip({ delta, good, unit }: { delta: number; good: boolean; unit: "%" | "пп" }) {
@@ -225,20 +270,39 @@ export function StatsClient({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState({ trend: true, ranking: true, channels: true, cost: true, table: false });
   const [selected, setSelected] = useState<string | null>(null);
+  const [showCustom, setShowCustom] = useState(initial.period === "custom");
+  const [customFrom, setCustomFrom] = useState(() => ymd(new Date(initial.from)));
+  const [customTo, setCustomTo] = useState(() => ymd(new Date(initial.to)));
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "revenue", dir: "desc" });
 
-  async function changePeriod(p: Period) {
-    if (p === period) return;
-    setPeriod(p);
+  async function load(url: string, p: Period) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/stats?period=${p}`);
+      const res = await fetch(url);
       if (res.ok) {
         setData(await res.json());
+        setPeriod(p);
         setSelected(null);
       }
     } finally {
       setLoading(false);
     }
+  }
+  function changePeriod(p: Period) {
+    if (p === period) return;
+    setShowCustom(false);
+    load(`/api/stats?period=${p}`, p);
+  }
+  function applyCustom() {
+    if (!customFrom || !customTo) return;
+    load(`/api/stats?period=custom&from=${customFrom}&to=${customTo}`, "custom");
+  }
+  function toggleSort(key: SortKey) {
+    setSort((s) =>
+      s.key === key
+        ? { key, dir: s.dir === "desc" ? "asc" : "desc" }
+        : { key, dir: key === "name" || key === "regionName" ? "asc" : "desc" },
+    );
   }
 
   const points = useMemo(
@@ -252,6 +316,18 @@ export function StatsClient({
   const ranked = useMemo(() => [...points].sort((a, b) => b.revenue - a.revenue), [points]);
   const maxRev = Math.max(1, ...points.map((p) => p.revenue));
   const selectedPoint = points.find((p) => p.id === selected) ?? null;
+  const rangeLabel = useMemo(() => formatRange(data.from, data.to), [data.from, data.to]);
+  const sortedRows = useMemo(() => {
+    const arr = [...points];
+    arr.sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      const c =
+        typeof va === "string" ? va.localeCompare(String(vb), "ru") : (va as number) - (vb as number);
+      return sort.dir === "asc" ? c : -c;
+    });
+    return arr;
+  }, [points, sort]);
 
   const kpis = [
     { label: "Выручка", value: rub(agg.revenue), delta: dPct(agg.revenue, agg.prevRevenue), good: true, unit: "%" as const },
@@ -269,6 +345,20 @@ export function StatsClient({
     },
     { label: "Списания", value: rub(agg.writeoffs), delta: dPct(agg.writeoffs, agg.prevWriteoffs), good: false, unit: "%" as const },
   ];
+
+  const sortTh = (label: string, key: SortKey, align: "left" | "right" = "right") => {
+    const active = sort.key === key;
+    return (
+      <th
+        onClick={() => toggleSort(key)}
+        className={`cursor-pointer select-none py-2 pr-3 ${align === "right" ? "text-right" : "text-left"} ${active ? "text-[var(--color-accent)]" : "transition-colors hover:text-[var(--color-muted)]"}`}
+        title="Сортировать"
+      >
+        {label}
+        <span className="ml-0.5 inline-block w-2">{active ? (sort.dir === "desc" ? "↓" : "↑") : ""}</span>
+      </th>
+    );
+  };
 
   return (
     <div className="pb-12">
@@ -289,6 +379,12 @@ export function StatsClient({
             </div>
             <p className="mt-1 text-[14px] text-[var(--color-muted)]">
               {role === "director" ? "Вся сеть" : `Региональный управляющий — регион «${regionLabel ?? "—"}»`}
+              {rangeLabel && (
+                <>
+                  {" · "}
+                  <span className="font-medium text-[var(--color-body)]">{rangeLabel}</span>
+                </>
+              )}
             </p>
           </div>
           <div className="flex rounded-[11px] bg-[var(--color-line)] p-1">
@@ -297,14 +393,54 @@ export function StatsClient({
                 key={p.key}
                 onClick={() => changePeriod(p.key)}
                 className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition ${
-                  period === p.key ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_2px_rgba(20,20,20,0.06)]" : "text-[var(--color-muted)]"
+                  period === p.key && !showCustom ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_2px_rgba(20,20,20,0.06)]" : "text-[var(--color-muted)]"
                 }`}
               >
                 {p.label}
               </button>
             ))}
+            <button
+              onClick={() => setShowCustom((s) => !s)}
+              className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition ${
+                period === "custom" || showCustom ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_2px_rgba(20,20,20,0.06)]" : "text-[var(--color-muted)]"
+              }`}
+            >
+              Период
+            </button>
           </div>
         </div>
+
+        {showCustom && (
+          <div className="mt-3 flex flex-wrap items-end gap-2.5 pb-1">
+            <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--color-muted)]">
+              с
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo || undefined}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="h-9 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-ink)] outline-none focus:border-[var(--color-accent)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-medium text-[var(--color-muted)]">
+              по
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom || undefined}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="h-9 rounded-[9px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-ink)] outline-none focus:border-[var(--color-accent)]"
+              />
+            </label>
+            <button
+              onClick={applyCustom}
+              disabled={!customFrom || !customTo || loading}
+              className="h-9 rounded-[9px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-white transition disabled:opacity-50"
+            >
+              Применить
+            </button>
+          </div>
+        )}
         {role === "director" && data.regions.length > 1 && (
           <div className="mt-3 flex flex-wrap gap-1.5 pb-3">
             {[{ id: "all", name: "Все" }, ...data.regions].map((r) => (
@@ -428,14 +564,18 @@ export function StatsClient({
                   <table className="w-full min-w-[760px] text-[13px]">
                     <thead>
                       <tr className="border-b border-[var(--color-line)] text-left text-[11.5px] font-semibold uppercase tracking-[0.03em] text-[var(--color-faint)]">
-                        <th className="py-2 pr-3">Точка</th><th className="py-2 pr-3">Регион</th>
-                        <th className="py-2 pr-3 text-right">Выручка</th><th className="py-2 pr-3 text-right">Δ</th>
-                        <th className="py-2 pr-3 text-right">Ср. чек</th><th className="py-2 pr-3 text-right">Чеки</th>
-                        <th className="py-2 pr-3 text-right">Foodcost</th><th className="py-2 text-right">ФОТ</th>
+                        {sortTh("Точка", "name", "left")}
+                        {sortTh("Регион", "regionName", "left")}
+                        {sortTh("Выручка", "revenue")}
+                        {sortTh("Δ", "delta")}
+                        {sortTh("Ср. чек", "avgCheck")}
+                        {sortTh("Чеки", "checks")}
+                        {sortTh("Foodcost", "foodcostPct")}
+                        {sortTh("ФОТ", "laborPct")}
                       </tr>
                     </thead>
                     <tbody>
-                      {ranked.map((p) => (
+                      {sortedRows.map((p) => (
                         <tr key={p.id} onClick={() => setSelected(p.id)} className="cursor-pointer border-b border-[var(--color-line)] transition hover:bg-[var(--color-surface-warm)]">
                           <td className="py-2.5 pr-3 font-medium text-[var(--color-ink)]">{p.name}</td>
                           <td className="py-2.5 pr-3 text-[var(--color-muted)]">{p.regionName}</td>
@@ -495,7 +635,7 @@ function PointDrawer({
   const avg = point.checks > 0 ? point.revenue / point.checks : 0;
   const sharePct = networkRevenue > 0 ? (point.revenue / networkRevenue) * 100 : 0;
   const netAvg = network.checks > 0 ? network.revenue / network.checks : 0;
-  const periodWord = period === "day" ? "день" : period === "week" ? "неделю" : "месяц";
+  const periodWord = periodWords[period];
 
   const mini = [
     { label: "Выручка", value: rub(point.revenue), delta: dPct(point.revenue, point.prevRevenue), good: true, unit: "%" as const },
