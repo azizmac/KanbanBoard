@@ -62,7 +62,7 @@ export async function getOrgAdminData(user: Actor) {
   const groupScope = director ? {} : { regionId: { in: regionIds! } };
   const boardScope = director ? {} : { regions: { some: { id: { in: regionIds! } } } };
 
-  const [regions, groups, users, boards, positions] = await Promise.all([
+  const [regions, groups, users, boards, positions, restaurants] = await Promise.all([
     prisma.region.findMany({
       where: regionWhere,
       orderBy: { createdAt: "asc" },
@@ -87,6 +87,12 @@ export async function getOrgAdminData(user: Actor) {
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: { id: true, name: true, role: true, color: true },
     }),
+    director
+      ? prisma.restaurant.findMany({
+          orderBy: [{ name: "asc" }],
+          select: { id: true, name: true, iikoDepartmentId: true, active: true, regionId: true },
+        })
+      : Promise.resolve([]),
   ]);
   return {
     positions,
@@ -106,6 +112,7 @@ export async function getOrgAdminData(user: Actor) {
     })),
     users,
     boards: boards.map((b) => ({ id: b.id, name: b.name, regionIds: b.regions.map((r) => r.id) })),
+    restaurants,
   };
 }
 

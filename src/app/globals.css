@@ -23,6 +23,13 @@
   --color-accent-soft: #eceafb;
   --color-accent-tint: #f5f4ff;
   --color-success: #17b26a;
+  --color-success-bg: #dcf3e8;
+
+  /* iiko stats charts */
+  --chart-hall: #5546e0;
+  --chart-del: #e0884c;
+  --chart-pickup: #3aa0b4;
+  --color-grid: #efece6;
 
   /* priority chips */
   --color-urgent: #b42318;
@@ -68,6 +75,12 @@
   --color-accent-soft: #2a2550;
   --color-accent-tint: #2a2550;
   --color-success: #6fd0a0;
+  --color-success-bg: #14352a;
+
+  --chart-hall: #8579f2;
+  --chart-del: #e0a06a;
+  --chart-pickup: #5bbccc;
+  --color-grid: #2a2723;
 
   --color-urgent: #fca5a5;
   --color-urgent-bg: #3a1f1f;

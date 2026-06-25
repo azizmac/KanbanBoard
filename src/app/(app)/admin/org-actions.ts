@@ -162,3 +162,54 @@ export async function createGroupInvite(groupId: string) {
   await recordAudit({ actorId: user.id, action: "GROUP_INVITE_CREATED", detail: group?.name ?? null });
   return { ok: true as const, url: `${base}/join/${token}` };
 }
+
+// ----- iiko sales points (Restaurant) — director-configured -----
+
+const deptSchema = z.string().trim().min(1, "Укажите ID точки iiko").max(120);
+
+export async function createRestaurant(name: string, regionId: string, iikoDepartmentId: string) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  const n = nameSchema.safeParse(name);
+  if (!n.success) return { ok: false as const, error: n.error.issues[0]?.message };
+  const d = deptSchema.safeParse(iikoDepartmentId);
+  if (!d.success) return { ok: false as const, error: d.error.issues[0]?.message };
+  if (!regionId) return { ok: false as const, error: "Выберите регион" };
+  try {
+    await prisma.restaurant.create({ data: { name: n.data, regionId, iikoDepartmentId: d.data } });
+  } catch {
+    return { ok: false as const, error: "Эта точка iiko уже привязана" };
+  }
+  return ok();
+}
+
+export async function updateRestaurant(
+  id: string,
+  data: { name?: string; regionId?: string; iikoDepartmentId?: string; active?: boolean },
+) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  const patch: Record<string, unknown> = {};
+  if (data.name !== undefined) {
+    const n = nameSchema.safeParse(data.name);
+    if (!n.success) return { ok: false as const, error: n.error.issues[0]?.message };
+    patch.name = n.data;
+  }
+  if (data.iikoDepartmentId !== undefined) {
+    const d = deptSchema.safeParse(data.iikoDepartmentId);
+    if (!d.success) return { ok: false as const, error: d.error.issues[0]?.message };
+    patch.iikoDepartmentId = d.data;
+  }
+  if (data.regionId !== undefined) patch.regionId = data.regionId;
+  if (data.active !== undefined) patch.active = data.active;
+  try {
+    await prisma.restaurant.update({ where: { id }, data: patch });
+  } catch {
+    return { ok: false as const, error: "Эта точка iiko уже привязана к другой точке" };
+  }
+  return ok();
+}
+
+export async function deleteRestaurant(id: string) {
+  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  await prisma.restaurant.delete({ where: { id } });
+  return ok();
+}

@@ -39,6 +39,15 @@ function IconCalendar() {
     </svg>
   );
 }
+
+function IconStats() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 3v18h18" />
+      <path d="M7 14l3-3 3 2 4-5" />
+    </svg>
+  );
+}
 function IconTeam() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -112,6 +121,7 @@ export function Sidebar({
     ...(isAdmin || isRegional
       ? [
           { href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] },
+          { href: "/stats", label: "Статистика", icon: <IconStats />, match: ["/stats"] },
           { href: "/templates", label: "Шаблоны", icon: <IconTemplate />, match: ["/templates"] },
         ]
       : []),

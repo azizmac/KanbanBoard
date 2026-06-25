@@ -18,6 +18,7 @@ export default async function OrgPage() {
       users={data.users}
       boards={data.boards}
       positions={data.positions}
+      restaurants={data.restaurants}
       canManageRegions={isDirector(user)}
       actorTier={actorTier(user)}
     />

@@ -10,9 +10,12 @@ import {
   createGroupInvite,
   createPosition,
   createRegion,
+  createRestaurant,
   deleteGroup,
   deletePosition,
   deleteRegion,
+  deleteRestaurant,
+  updateRestaurant,
   renameGroup,
   renameRegion,
   setBoardRegions,
@@ -28,6 +31,7 @@ type Group = { id: string; name: string; regionId: string | null; memberIds: str
 type UserOpt = { id: string; name: string; role: Role };
 type BoardOpt = { id: string; name: string; regionIds: string[] };
 type PositionOpt = { id: string; name: string; role: Role; color: string };
+type RestaurantOpt = { id: string; name: string; iikoDepartmentId: string; active: boolean; regionId: string };
 
 const ALL_ROLES: Role[] = ["MEMBER", "MANAGER", "ADMIN"];
 const roleTier = (r: Role) => (r === "ADMIN" ? 2 : r === "MANAGER" ? 1 : 0);
@@ -84,6 +88,7 @@ export function OrgPanel({
   users,
   boards,
   positions,
+  restaurants,
   canManageRegions,
   actorTier,
 }: {
@@ -92,6 +97,7 @@ export function OrgPanel({
   users: UserOpt[];
   boards: BoardOpt[];
   positions: PositionOpt[];
+  restaurants: RestaurantOpt[];
   canManageRegions: boolean;
   actorTier: number;
 }) {
@@ -104,6 +110,7 @@ export function OrgPanel({
   const [newPosition, setNewPosition] = useState("");
   const [newPositionRole, setNewPositionRole] = useState<Role>("MEMBER");
   const [newPositionColor, setNewPositionColor] = useState<string>("gray");
+  const [newResto, setNewResto] = useState({ name: "", regionId: "", dept: "" });
   const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
   const [groupFilter, setGroupFilter] = useState<string>("ALL"); // "ALL" | "NONE" | regionId
 
@@ -423,6 +430,91 @@ export function OrgPanel({
             );
           })}
           {positions.length === 0 && <p className="text-sm text-[var(--color-muted)]">Должностей пока нет.</p>}
+        </div>
+      </section>
+      )}
+
+      {/* iiko sales points (directors only) — powers the «Статистика» tab */}
+      {canManageRegions && (
+      <section className="mt-9">
+        <h2 className={sectionLabel}>Точки iiko (для «Статистики»)</h2>
+        <p className="mb-3 text-[13px] text-[var(--color-muted)]">
+          Привяжи точку к региону и её ID подразделения в iiko OLAP. Региональный управляющий видит в
+          «Статистике» только точки своих регионов, директор — все.
+        </p>
+
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] p-3.5">
+          <input
+            value={newResto.name}
+            onChange={(e) => setNewResto({ ...newResto, name: e.target.value })}
+            placeholder="Название точки"
+            className="h-9 w-[200px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"
+          />
+          <select
+            value={newResto.regionId}
+            onChange={(e) => setNewResto({ ...newResto, regionId: e.target.value })}
+            className="h-9 rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2.5 text-sm outline-none focus:border-[var(--color-accent)]"
+          >
+            <option value="">— регион —</option>
+            {regions.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+          <input
+            value={newResto.dept}
+            onChange={(e) => setNewResto({ ...newResto, dept: e.target.value })}
+            placeholder="ID подразделения iiko"
+            className="h-9 w-[200px] rounded-[10px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 font-mono text-[12.5px] outline-none focus:border-[var(--color-accent)]"
+          />
+          <button
+            onClick={() =>
+              newResto.name.trim() && newResto.regionId && newResto.dept.trim() &&
+              (run(createRestaurant(newResto.name.trim(), newResto.regionId, newResto.dept.trim())), setNewResto({ name: "", regionId: "", dept: "" }))
+            }
+            className="ml-auto rounded-[10px] bg-[var(--color-accent)] px-3.5 text-sm font-semibold text-white"
+          >
+            Добавить точку
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {restaurants.map((rt) => (
+            <div key={rt.id} className={`flex flex-wrap items-center gap-2 rounded-[10px] border border-[var(--color-border-card)] bg-[var(--color-surface)] px-3.5 py-2.5 ${rt.active ? "" : "opacity-60"}`}>
+              <input
+                defaultValue={rt.name}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== rt.name && run(updateRestaurant(rt.id, { name: e.target.value.trim() }))}
+                className="h-8 min-w-[140px] flex-1 rounded-[8px] border border-transparent bg-transparent px-1.5 text-[14px] font-medium outline-none hover:border-[var(--color-border-input)] focus:border-[var(--color-accent)]"
+              />
+              <select
+                value={rt.regionId}
+                onChange={(e) => run(updateRestaurant(rt.id, { regionId: e.target.value }))}
+                className="h-8 rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 text-[13px] outline-none focus:border-[var(--color-accent)]"
+              >
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+              <input
+                defaultValue={rt.iikoDepartmentId}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== rt.iikoDepartmentId && run(updateRestaurant(rt.id, { iikoDepartmentId: e.target.value.trim() }))}
+                title="ID подразделения в iiko OLAP"
+                className="h-8 w-[190px] rounded-[8px] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 font-mono text-[12px] text-[var(--color-muted)] outline-none focus:border-[var(--color-accent)]"
+              />
+              <button
+                onClick={() => run(updateRestaurant(rt.id, { active: !rt.active }))}
+                className={`rounded-full px-2.5 py-1 text-[11.5px] font-medium ${rt.active ? "bg-[var(--color-success-bg)] text-[var(--color-success)]" : "bg-[var(--color-line)] text-[var(--color-muted)]"}`}
+              >
+                {rt.active ? "активна" : "скрыта"}
+              </button>
+              <button
+                onClick={() => confirm(`Удалить точку «${rt.name}»?`) && run(deleteRestaurant(rt.id))}
+                className="text-[var(--color-faint)] hover:text-[var(--color-urgent)]"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {restaurants.length === 0 && <p className="text-sm text-[var(--color-muted)]">Точек пока нет.</p>}
         </div>
       </section>
       )}

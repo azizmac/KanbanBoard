@@ -87,10 +87,27 @@ model Region {
   id        String   @id @default(cuid())
   name      String
   color     String   @default("iris")
+  createdAt   DateTime     @default(now())
+  boards      Board[]      @relation("BoardRegions")
+  groups      Group[]
+  managers    User[]       @relation("RegionManagers")
+  restaurants Restaurant[] // iiko sales points belonging to this region
+}
+
+// A sales point (restaurant) mapped to an iiko OLAP department, scoped to a
+// region. Powers the «Статистика» dashboard: a director sees all points, a
+// regional manager sees only points in regions they manage. Admin-configured.
+model Restaurant {
+  id               String  @id @default(cuid())
+  name             String
+  iikoDepartmentId String  @unique // matches Department in iiko OLAP rows
+  active           Boolean @default(true)
+
+  regionId  String
+  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  boards    Board[]  @relation("BoardRegions")
-  groups    Group[]
-  managers  User[]   @relation("RegionManagers")
+
+  @@index([regionId])
 }
 
 // Справочник должностей — admin-built catalog of job titles. Each position is

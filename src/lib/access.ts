@@ -127,3 +127,18 @@ export async function canManageBoard(
   const ids = await manageableRegionIds(user);
   return Boolean(ids && board.regions.some((r) => ids.includes(r.id)));
 }
+
+// ----- iiko «Статистика» access (mirrors board access, for sales points) -----
+
+/** Who may open the iiko statistics dashboard: directors + regional managers. */
+export function canViewStats(user: Actor): boolean {
+  return isDirector(user) || isRegional(user);
+}
+
+/** Prisma `where` for the sales points a user may see: director → all active;
+ *  regional → active points in regions they manage; everyone else → none. */
+export function visibleRestaurantWhere(user: Actor): Prisma.RestaurantWhereInput {
+  if (isDirector(user)) return { active: true };
+  if (isRegional(user)) return { active: true, region: { managers: { some: { id: user.id } } } };
+  return { id: "__none__" };
+}

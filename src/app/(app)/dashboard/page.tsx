@@ -37,6 +37,9 @@ export default async function DashboardPage() {
               Выгрузить CSV
             </a>
           )}
+          <Link href="/stats" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+            Статистика →
+          </Link>
           <Link href="/templates" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
             Шаблоны →
           </Link>
