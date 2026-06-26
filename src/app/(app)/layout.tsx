@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { PushSetup } from "@/components/PushSetup";
 import { Sidebar } from "@/components/Sidebar";
@@ -13,6 +14,11 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
+
+  // First sign-in: hold new hires on the onboarding tour until they finish it.
+  // /onboarding lives outside the (app) group, so there's no redirect loop.
+  if (!user.onboardedAt) redirect("/onboarding");
+
   const isAdmin = user.role === "ADMIN";
   const isRegional = user.role === "MANAGER";
 
@@ -20,7 +26,7 @@ export default async function AppLayout({
     <div className="flex min-h-screen">
       <PushSetup />
       <Sidebar name={user.name} avatarUrl={user.avatarUrl} isAdmin={isAdmin} isRegional={isRegional} />
-      <main className="min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
+      <main className="safe-top safe-x min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
       <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} />
     </div>
   );

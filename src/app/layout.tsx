@@ -27,7 +27,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#D97757",
+  // Draw under the notch / home indicator so env(safe-area-inset-*) is non-zero
+  // and the installed app goes edge-to-edge (no letterboxing on iPhone).
+  viewportFit: "cover",
+  // Tints the status bar (Android) and the window title bar (desktop PWA on
+  // macOS/Windows). Match the app surface per colour-scheme instead of a flat
+  // accent so it blends in both themes.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f5f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#161412" },
+  ],
 };
 
 export default function RootLayout({

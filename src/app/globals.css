@@ -100,6 +100,9 @@
 html,
 body {
   height: 100%;
+  /* Don't let iOS bump font sizes in landscape; keep our type scale exact. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -108,6 +111,26 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  /* Native-app feel when installed (PWA): no tap flash, no rubber-band that
+     reveals a white gap behind the canvas. The canvas bg above already paints
+     the safe-area / overscroll regions in the app colour. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* --- Safe-area helpers for installed PWAs (notch / home indicator) ---
+   These resolve to 0 on every non-notched device & desktop, so they're inert
+   outside standalone iOS. Requires viewport-fit=cover (set in layout.tsx). */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* Sticky page headers should pin *below* the status bar, not under it. */
+.top-safe {
+  top: env(safe-area-inset-top);
 }
 
 .font-mono {

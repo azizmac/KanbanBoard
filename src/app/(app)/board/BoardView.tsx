@@ -298,7 +298,7 @@ export function BoardView({
       </div>
 
       {/* ---- Mobile header + column pills ---- */}
-      <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 pt-3 pb-2.5 sm:hidden">
+      <div className="sticky top-safe z-20 shrink-0 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 pt-3 pb-2.5 sm:hidden">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <BoardSwitcher current={board} boards={boards} regions={regions} canCreate={canCreate} />

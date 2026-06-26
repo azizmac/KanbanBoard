@@ -363,7 +363,7 @@ export function StatsClient({
   return (
     <div className="pb-12">
       {/* sticky header */}
-      <div className="sticky top-0 z-10 border-b border-[var(--color-line)] bg-[var(--color-canvas)] px-5 pt-6 sm:px-9">
+      <div className="sticky top-safe z-10 border-b border-[var(--color-line)] bg-[var(--color-canvas)] px-5 pt-6 sm:px-9">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2.5">
