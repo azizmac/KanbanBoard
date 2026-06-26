@@ -45,6 +45,8 @@ model User {
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+  // when the user finished/skipped onboarding (null = not yet → gated to /onboarding)
+  onboardedAt DateTime?
 
   // relations
   createdTasks  Task[]         @relation("TaskCreator")
