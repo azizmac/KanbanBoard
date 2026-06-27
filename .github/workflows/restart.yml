@@ -1,8 +1,5 @@
 name: Restart stack
 
-# Manual recovery / diagnostics lever for when the mini-PC stack is wedged but
-# the runner is still online. Runs docker commands in the deploy dir left by the
-# last successful deploy (no checkout / npm / build).
 on:
   workflow_dispatch:
     inputs:
@@ -17,21 +14,20 @@ jobs:
     env:
       DOCKER_CONFIG: C:\Users\minipc\dockercfg
     steps:
-      - name: Diagnose (network + local health)
+      - name: Diagnose (stack-internal vs host network)
         shell: cmd
         working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
         run: |
-          echo ===== box public IP (DNS points at 95.165.71.224) =====
-          curl -s --max-time 12 https://api.ipify.org
+          echo ===== caddy -^> app (internal docker network) =====
+          docker exec deploy-caddy-1 sh -c "wget -S -O- -T 6 http://app:3000/login 2>&1 | head -8"
           echo.
-          echo ===== app local health on box (expect 200/307) =====
-          curl -s -o NUL -w "app http://localhost:3000/login = %%{http_code}" --max-time 12 http://localhost:3000/login
+          echo ===== caddy -^> app via caddy https (internal) =====
+          docker exec deploy-caddy-1 sh -c "wget --no-check-certificate -S -O- -T 6 https://localhost/login 2>&1 | head -6"
           echo.
-          echo ===== caddy local health on box (expect 200/307) =====
-          curl -s -k -o NUL -w "caddy https://localhost/login = %%{http_code}" --max-time 12 -H "Host: kanban.freshdv.ru" https://localhost/login
-          echo.
-          echo ===== containers =====
-          docker ps --format "{{.Names}} | {{.Status}}"
+          echo ===== host listeners on 22 / 80 / 443 =====
+          powershell -NoProfile -Command "Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -eq 22 -or $_.LocalPort -eq 80 -or $_.LocalPort -eq 443 } | Select-Object LocalAddress,LocalPort,OwningProcess | Sort-Object LocalPort | Format-Table -AutoSize | Out-String"
+          echo ===== firewall profiles =====
+          powershell -NoProfile -Command "Get-NetFirewallProfile | Select-Object Name,Enabled | Format-Table -AutoSize | Out-String"
 
       - name: Restart (only if action=restart)
         if: ${{ github.event.inputs.action == 'restart' }}
