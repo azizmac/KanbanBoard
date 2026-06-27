@@ -1,11 +1,15 @@
 name: Restart stack
 
-# Manual recovery lever for when the mini-PC stack is wedged but the runner is
-# still online. Cycles the docker compose stack (down → up) WITHOUT npm/tsc/build,
-# reusing the deploy dir + image left by the last successful deploy — light enough
-# to run on an overloaded host (the `down` frees memory before `up`).
+# Manual recovery / diagnostics lever for when the mini-PC stack is wedged but
+# the runner is still online. Runs docker commands in the deploy dir left by the
+# last successful deploy (no checkout / npm / build).
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "diag | restart"
+        required: false
+        default: "diag"
 
 jobs:
   restart:
@@ -13,15 +17,24 @@ jobs:
     env:
       DOCKER_CONFIG: C:\Users\minipc\dockercfg
     steps:
-      - name: Restart docker stack
+      - name: Diagnose
         shell: cmd
         working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
         run: |
-          echo ===== ps before =====
+          echo ===== ps -a =====
           docker ps -a
-          echo ===== down =====
+          echo ===== app logs (tail 80) =====
+          docker logs --tail 80 deploy-app-1 2>&1
+          echo ===== caddy logs (tail 40) =====
+          docker logs --tail 40 deploy-caddy-1 2>&1
+          echo ===== migrate logs (tail 50) =====
+          docker logs --tail 50 deploy-migrate-1 2>&1
+
+      - name: Restart (only if action=restart)
+        if: ${{ github.event.inputs.action == 'restart' }}
+        shell: cmd
+        working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
+        run: |
           docker compose -f docker-compose.minipc.yml --env-file .env.prod down --remove-orphans
-          echo ===== up -d (no build) =====
           docker compose -f docker-compose.minipc.yml --env-file .env.prod up -d
-          echo ===== ps after =====
           docker ps
