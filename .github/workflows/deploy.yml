@@ -73,6 +73,16 @@ jobs:
           IIKO_LOGIN: ${{ secrets.IIKO_LOGIN }}
           IIKO_PASS_SHA1: ${{ secrets.IIKO_PASS_SHA1 }}
 
+      # Genspark inbound webhook secret (+ optional default board). Secret only.
+      - name: Append Genspark config
+        shell: powershell
+        run: |
+          $lines = "`nGENSPARK_WEBHOOK_SECRET=$env:GENSPARK_WEBHOOK_SECRET`nGENSPARK_DEFAULT_BOARD_ID=$env:GENSPARK_DEFAULT_BOARD_ID`n"
+          [System.IO.File]::AppendAllText("$(Get-Location)\deploy\.env.prod", $lines, [System.Text.Encoding]::UTF8)
+        env:
+          GENSPARK_WEBHOOK_SECRET: ${{ secrets.GENSPARK_WEBHOOK_SECRET }}
+          GENSPARK_DEFAULT_BOARD_ID: ${{ vars.GENSPARK_DEFAULT_BOARD_ID || secrets.GENSPARK_DEFAULT_BOARD_ID }}
+
       - name: Build & start stack
         shell: cmd
         working-directory: deploy

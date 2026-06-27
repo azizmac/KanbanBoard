@@ -46,6 +46,9 @@ services:
       IIKO_PASS_SHA1: ${IIKO_PASS_SHA1:-}
       IIKO_ORDER_TYPE_MAP: ${IIKO_ORDER_TYPE_MAP:-}
       IIKO_JURPERSON_FILTER: ${IIKO_JURPERSON_FILTER:-}
+      # Genspark inbound webhook (POST /api/webhooks/genspark)
+      GENSPARK_WEBHOOK_SECRET: ${GENSPARK_WEBHOOK_SECRET:-}
+      GENSPARK_DEFAULT_BOARD_ID: ${GENSPARK_DEFAULT_BOARD_ID:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
