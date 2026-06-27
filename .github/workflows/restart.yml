@@ -17,18 +17,21 @@ jobs:
     env:
       DOCKER_CONFIG: C:\Users\minipc\dockercfg
     steps:
-      - name: Diagnose
+      - name: Diagnose (network + local health)
         shell: cmd
         working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
         run: |
-          echo ===== ps -a =====
-          docker ps -a
-          echo ===== app logs (tail 80) =====
-          docker logs --tail 80 deploy-app-1 2>&1
-          echo ===== caddy logs (tail 40) =====
-          docker logs --tail 40 deploy-caddy-1 2>&1
-          echo ===== migrate logs (tail 50) =====
-          docker logs --tail 50 deploy-migrate-1 2>&1
+          echo ===== box public IP (DNS points at 95.165.71.224) =====
+          curl -s --max-time 12 https://api.ipify.org
+          echo.
+          echo ===== app local health on box (expect 200/307) =====
+          curl -s -o NUL -w "app http://localhost:3000/login = %%{http_code}" --max-time 12 http://localhost:3000/login
+          echo.
+          echo ===== caddy local health on box (expect 200/307) =====
+          curl -s -k -o NUL -w "caddy https://localhost/login = %%{http_code}" --max-time 12 -H "Host: kanban.freshdv.ru" https://localhost/login
+          echo.
+          echo ===== containers =====
+          docker ps --format "{{.Names}} | {{.Status}}"
 
       - name: Restart (only if action=restart)
         if: ${{ github.event.inputs.action == 'restart' }}
@@ -37,4 +40,3 @@ jobs:
         run: |
           docker compose -f docker-compose.minipc.yml --env-file .env.prod down --remove-orphans
           docker compose -f docker-compose.minipc.yml --env-file .env.prod up -d
-          docker ps
