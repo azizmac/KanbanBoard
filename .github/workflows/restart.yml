@@ -14,20 +14,19 @@ jobs:
     env:
       DOCKER_CONFIG: C:\Users\minipc\dockercfg
     steps:
-      - name: Diagnose (stack-internal vs host network)
+      - name: Diagnose (caddy real-domain TLS, locally)
         shell: cmd
         working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
         run: |
-          echo ===== caddy -^> app (internal docker network) =====
-          docker exec deploy-caddy-1 sh -c "wget -S -O- -T 6 http://app:3000/login 2>&1 | head -8"
+          echo ===== caddy HTTPS for kanban.freshdv.ru via 127.0.0.1:443 (correct SNI) =====
+          curl.exe -s -o NUL -w "result = %%{http_code}" --max-time 15 --resolve kanban.freshdv.ru:443:127.0.0.1 https://kanban.freshdv.ru/login
           echo.
-          echo ===== caddy -^> app via caddy https (internal) =====
-          docker exec deploy-caddy-1 sh -c "wget --no-check-certificate -S -O- -T 6 https://localhost/login 2>&1 | head -6"
+          echo ===== caddy HTTP:80 redirect via 127.0.0.1:80 =====
+          curl.exe -s -o NUL -w "result = %%{http_code}" --max-time 15 --resolve kanban.freshdv.ru:80:127.0.0.1 http://kanban.freshdv.ru/login
           echo.
-          echo ===== host listeners on 22 / 80 / 443 =====
-          powershell -NoProfile -Command "Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -eq 22 -or $_.LocalPort -eq 80 -or $_.LocalPort -eq 443 } | Select-Object LocalAddress,LocalPort,OwningProcess | Sort-Object LocalPort | Format-Table -AutoSize | Out-String"
-          echo ===== firewall profiles =====
-          powershell -NoProfile -Command "Get-NetFirewallProfile | Select-Object Name,Enabled | Format-Table -AutoSize | Out-String"
+          echo ===== TLS cert caddy presents for the domain =====
+          curl.exe -sv --max-time 15 --resolve kanban.freshdv.ru:443:127.0.0.1 https://kanban.freshdv.ru/login 1>NUL 2>cert.txt
+          findstr /i "subject issuer expire SSL certificate alert handshake" cert.txt
 
       - name: Restart (only if action=restart)
         if: ${{ github.event.inputs.action == 'restart' }}
