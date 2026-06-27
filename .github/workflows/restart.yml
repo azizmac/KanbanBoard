@@ -27,6 +27,8 @@ jobs:
           echo ===== TLS cert caddy presents for the domain =====
           curl.exe -sv --max-time 15 --resolve kanban.freshdv.ru:443:127.0.0.1 https://kanban.freshdv.ru/login 1>NUL 2>cert.txt
           findstr /i "subject issuer expire SSL certificate alert handshake" cert.txt
+          echo ===== mini-PC LAN IPv4 (router must forward 22/80/443 here) =====
+          powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } | Select-Object IPAddress,InterfaceAlias | Format-Table -AutoSize | Out-String"
 
       - name: Restart (only if action=restart)
         if: ${{ github.event.inputs.action == 'restart' }}
