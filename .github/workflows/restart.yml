@@ -1,0 +1,27 @@
+name: Restart stack
+
+# Manual recovery lever for when the mini-PC stack is wedged but the runner is
+# still online. Cycles the docker compose stack (down → up) WITHOUT npm/tsc/build,
+# reusing the deploy dir + image left by the last successful deploy — light enough
+# to run on an overloaded host (the `down` frees memory before `up`).
+on:
+  workflow_dispatch:
+
+jobs:
+  restart:
+    runs-on: [self-hosted, kanban]
+    env:
+      DOCKER_CONFIG: C:\Users\minipc\dockercfg
+    steps:
+      - name: Restart docker stack
+        shell: cmd
+        working-directory: C:\actions-runner\_work\KanbanPims\KanbanPims\deploy
+        run: |
+          echo ===== ps before =====
+          docker ps -a
+          echo ===== down =====
+          docker compose -f docker-compose.minipc.yml --env-file .env.prod down --remove-orphans
+          echo ===== up -d (no build) =====
+          docker compose -f docker-compose.minipc.yml --env-file .env.prod up -d
+          echo ===== ps after =====
+          docker ps
