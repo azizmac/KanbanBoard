@@ -392,7 +392,7 @@ export function StatsClient({
               <button
                 key={p.key}
                 onClick={() => changePeriod(p.key)}
-                className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition ${
+                className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors duration-150 ease-out ${
                   period === p.key && !showCustom ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_2px_rgba(20,20,20,0.06)]" : "text-[var(--color-muted)]"
                 }`}
               >
@@ -401,7 +401,7 @@ export function StatsClient({
             ))}
             <button
               onClick={() => setShowCustom((s) => !s)}
-              className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition ${
+              className={`rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors duration-150 ease-out ${
                 period === "custom" || showCustom ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_2px_rgba(20,20,20,0.06)]" : "text-[var(--color-muted)]"
               }`}
             >
@@ -450,7 +450,7 @@ export function StatsClient({
                   setRegion(r.id);
                   setSelected(null);
                 }}
-                className={`rounded-full px-3 py-1 text-[12.5px] font-medium transition ${
+                className={`rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150 ease-out ${
                   region === r.id ? "bg-[var(--color-sidebar)] text-white" : "bg-[var(--color-surface-warm)] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
                 }`}
               >

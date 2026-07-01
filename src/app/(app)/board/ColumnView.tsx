@@ -63,8 +63,8 @@ export function ColumnView({
 
       <div
         ref={setNodeRef}
-        className={`scroll-thin flex max-h-[calc(100dvh-12rem)] flex-1 flex-col gap-2.5 overflow-y-auto rounded-xl px-0.5 pb-2 transition ${
-          isOver ? "bg-[var(--color-accent-tint)]" : ""
+        className={`scroll-thin flex max-h-[calc(100dvh-12rem)] flex-1 flex-col gap-2.5 overflow-y-auto rounded-xl px-0.5 pb-2 transition-[background-color,box-shadow] duration-200 ease-out ${
+          isOver ? "bg-[var(--color-accent-tint)] shadow-[inset_0_0_0_2px_rgba(85,70,224,0.35)]" : ""
         }`}
       >
         <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>

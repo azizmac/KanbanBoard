@@ -53,10 +53,10 @@ export function TaskCardContent({
 
   return (
     <div
-      className={`overflow-hidden rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(20,20,20,0.03)] transition ${
+      className={`overflow-hidden rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(20,20,20,0.03)] ${
         dragging
-          ? "shadow-[0_10px_30px_rgba(20,20,20,0.12)] ring-2 ring-[var(--color-accent)]/25"
-          : "hover:border-[var(--color-accent)]/40"
+          ? "scale-[1.03] shadow-[0_14px_34px_rgba(20,20,20,0.16)] ring-2 ring-[var(--color-accent)]/30"
+          : "card-hover hover:border-[var(--color-accent)]/50"
       } ${done ? "opacity-[0.78]" : ""}`}
     >
       {task.priority === "URGENT" && <div className="h-[3px] bg-[var(--color-urgent-dot)]" />}

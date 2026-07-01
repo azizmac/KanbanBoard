@@ -46,6 +46,13 @@
   --color-low-dot: #b9b6ae;
 
   --radius-card: 13px;
+
+  /* ---- Motion: strong custom easings (built-in CSS curves are too weak).
+     Overrides Tailwind's ease-out / ease-in-out utilities app-wide, and adds
+     a subtle-overshoot ease-back for "picked up" feedback. ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-back: cubic-bezier(0.34, 1.5, 0.64, 1);
 }
 
 /* ---- Dark theme (warm graphite). The app uses var(--color-*) everywhere, so
@@ -131,6 +138,48 @@ body {
 /* Sticky page headers should pin *below* the status bar, not under it. */
 .top-safe {
   top: env(safe-area-inset-top);
+}
+
+/* --- Interaction polish -------------------------------------------------
+   Press feedback + hover lift, all on compositor-friendly transform only.
+   Everything is gated behind prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Every pressable element confirms the tap by scaling down a hair. Lives in
+     @layer base so a component's own Tailwind `transition`/`active:` utilities
+     still win — this only supplies a default for buttons that have none. */
+  @layer base {
+    button,
+    [role="button"],
+    a[role="button"] {
+      transition: transform 140ms var(--ease-out);
+    }
+    button:not(:disabled):active,
+    [role="button"]:not([aria-disabled="true"]):active,
+    a[role="button"]:active {
+      transform: scale(0.97);
+    }
+  }
+
+  /* Cards: smooth, specific transitions (never `all`) + a gentle lift toward
+     the cursor — only on real pointers so a tap doesn't fake a hover. */
+  .card-hover {
+    transition:
+      transform 200ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      border-color 200ms var(--ease-out);
+  }
+  .card-hover:active {
+    transform: scale(0.985);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08);
+    }
+    .card-hover:active {
+      transform: translateY(-2px) scale(0.985);
+    }
+  }
 }
 
 .font-mono {

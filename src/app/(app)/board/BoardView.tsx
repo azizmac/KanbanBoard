@@ -324,10 +324,10 @@ export function BoardView({
               <button
                 key={c.id}
                 onClick={() => setActiveColumnId(c.id)}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 ease-out ${
                   on
                     ? "bg-[var(--color-sidebar)] text-white"
-                    : "bg-[#F2F1ED] text-[var(--color-muted)]"
+                    : "bg-[#F2F1ED] text-[var(--color-muted)] hover:text-[var(--color-ink)]"
                 }`}
               >
                 {c.name} · {c.tasks.length}
