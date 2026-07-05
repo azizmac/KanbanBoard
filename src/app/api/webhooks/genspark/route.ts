@@ -164,8 +164,12 @@ export async function POST(req: Request) {
   await notifyTaskChange(task.id);
   if (tokenId) await prisma.webhookToken.update({ where: { id: tokenId }, data: { lastUsedAt: new Date() } });
 
-  const base = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
-  return NextResponse.json({ ok: true, taskId: task.id, url: `${base}/task/${task.id}`, assignedTo: assignee?.name ?? null });
+  // Public origin from the request (Caddy sets Host + X-Forwarded-Proto) so the
+  // returned link is https://kanban.freshdv.ru/… in prod, not a stale build env.
+  const host = req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const base = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  return NextResponse.json({ ok: true, taskId: task.id, url: base ? `${base}/task/${task.id}` : `/task/${task.id}`, assignedTo: assignee?.name ?? null });
 }
 
 // Lightweight discovery/health for integrators (no secret, no data leaked).

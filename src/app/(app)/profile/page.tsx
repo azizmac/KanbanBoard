@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { Avatar } from "@/components/Avatar";
 import { PushToggle } from "@/components/PushToggle";
 import { ThemeSegment } from "@/components/ThemeToggle";
@@ -48,7 +49,13 @@ export default async function ProfilePage() {
         select: { id: true, label: true, createdAt: true, lastUsedAt: true },
       })
     : [];
-  const webhookEndpoint = `${(process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "")}/api/webhooks/genspark`;
+  // Build the endpoint from the ACTUAL request origin (Caddy forwards Host +
+  // X-Forwarded-Proto), so prod shows https://kanban.freshdv.ru — never a stale
+  // build-time NEXT_PUBLIC_APP_URL or localhost.
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const webhookEndpoint = host ? `${proto}://${host}/api/webhooks/genspark` : "/api/webhooks/genspark";
 
   return (
     <div className="pb-10">
