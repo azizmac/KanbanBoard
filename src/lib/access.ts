@@ -142,3 +142,27 @@ export function visibleRestaurantWhere(user: Actor): Prisma.RestaurantWhereInput
   if (isRegional(user)) return { active: true, region: { managers: { some: { id: user.id } } } };
   return { id: "__none__" };
 }
+
+/** Only directors + regional managers may mint personal webhook tokens. */
+export function canCreateWebhookToken(user: Actor): boolean {
+  return isDirector(user) || isRegional(user);
+}
+
+/** Prisma `where` for the people a user may assign tasks to ("their participants"):
+ *  director → any active user; regional → themselves, their direct reports, and
+ *  members of groups in the region(s) they manage; everyone else → none. Used to
+ *  scope who a personal webhook token can assign to. */
+export function assignableUserWhere(user: Actor): Prisma.UserWhereInput {
+  if (isDirector(user)) return { active: true };
+  if (isRegional(user)) {
+    return {
+      active: true,
+      OR: [
+        { id: user.id },
+        { managerId: user.id },
+        { groups: { some: { region: { managers: { some: { id: user.id } } } } } },
+      ],
+    };
+  }
+  return { id: "__none__" };
+}

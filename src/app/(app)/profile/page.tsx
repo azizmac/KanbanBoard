@@ -1,7 +1,9 @@
 import { Avatar } from "@/components/Avatar";
 import { PushToggle } from "@/components/PushToggle";
 import { ThemeSegment } from "@/components/ThemeToggle";
+import { Integrations } from "./Integrations";
 import { NotifySettings } from "./NotifySettings";
+import { canCreateWebhookToken } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/auth-actions";
 import { roleLabels } from "@/lib/constants";
@@ -36,6 +38,17 @@ export default async function ProfilePage() {
     { label: "Досок", value: boards },
     { label: "Комментариев", value: commentCount },
   ];
+
+  // Personal webhook (Genspark) tokens — directors/regionals only.
+  const canTokens = canCreateWebhookToken(me);
+  const tokens = canTokens
+    ? await prisma.webhookToken.findMany({
+        where: { userId: me.id, revokedAt: null },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, label: true, createdAt: true, lastUsedAt: true },
+      })
+    : [];
+  const webhookEndpoint = `${(process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "")}/api/webhooks/genspark`;
 
   return (
     <div className="pb-10">
@@ -155,6 +168,18 @@ export default async function ProfilePage() {
             </form>
           </aside>
         </div>
+
+        {canTokens && (
+          <Integrations
+            endpoint={webhookEndpoint}
+            tokens={tokens.map((t) => ({
+              id: t.id,
+              label: t.label,
+              createdAt: t.createdAt.toISOString(),
+              lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
+            }))}
+          />
+        )}
       </div>
     </div>
   );

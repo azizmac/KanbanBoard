@@ -55,6 +55,7 @@ model User {
   attachments   Attachment[]
   mentions      Mention[]
   sessions      Session[]
+  webhookTokens WebhookToken[]
   notifications Notification[]
   activities    Activity[]
   pushSubscriptions PushSubscription[]
@@ -143,6 +144,23 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Personal API token for the inbound webhook (Genspark etc.). Only the SHA-256
+// hash is stored; the plaintext (prefixed "gsk_") is shown once at creation.
+// A token acts as its owner — the webhook scopes created tasks to the owner's
+// accessible boards + assignable teammates (see lib/access.ts).
+model WebhookToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  label      String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
 }
