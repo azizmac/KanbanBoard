@@ -59,6 +59,13 @@ function IconSearch() {
     </svg>
   );
 }
+function IconChat() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
 function IconDashboard() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -69,21 +76,33 @@ function IconDashboard() {
   );
 }
 
-export function MobileTabBar({ isAdmin, isRegional }: { isAdmin: boolean; isRegional: boolean }) {
+export function MobileTabBar({
+  isAdmin,
+  isRegional,
+  chatUnread = 0,
+}: {
+  isAdmin: boolean;
+  isRegional: boolean;
+  chatUnread?: number;
+}) {
   const pathname = usePathname();
+
+  // Inside a dialog the conversation takes the whole screen (messenger UX).
+  if (/^\/chat\/./.test(pathname)) return null;
+
   const items = [
     { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
-    { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
-    // Leadership gets Сводка in the team slot (they reach the team via Админка).
+    { href: "/chat", label: "Чат", icon: <IconChat />, match: ["/chat"], badge: chatUnread },
+    // Leadership gets Сводка (search stays on desktop); members keep Поиск + Команда.
     ...(isAdmin || isRegional
       ? [{ href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] }]
-      : [{ href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] }]),
+      : [{ href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] }]),
     ...(isAdmin
       ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }]
       : isRegional
         ? [{ href: "/admin/org", label: "Регионы", icon: <IconOrg />, match: ["/admin/org"] }]
-        : []),
+        : [{ href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] }]),
     { href: "/profile", label: "Профиль", icon: <IconProfile />, match: ["/profile"] },
   ];
 
@@ -99,7 +118,14 @@ export function MobileTabBar({ isAdmin, isRegional }: { isAdmin: boolean; isRegi
               active ? "text-[var(--color-accent)]" : "text-[var(--color-muted)]"
             }`}
           >
-            {it.icon}
+            <span className="relative">
+              {it.icon}
+              {"badge" in it && (it.badge ?? 0) > 0 && (
+                <span className="absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full border-2 border-[var(--color-surface)] bg-[#F04438] px-0.5 text-[9px] font-bold leading-none text-white">
+                  {(it.badge ?? 0) > 9 ? "9+" : it.badge}
+                </span>
+              )}
+            </span>
             {it.label}
           </Link>
         );

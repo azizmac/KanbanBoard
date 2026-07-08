@@ -72,7 +72,116 @@ model User {
   ownedBoards    Board[]  @relation("OwnedBoards")
   mutedBoards    Board[]  @relation("BoardMutes") // boards this user silenced
 
+  // messenger
+  chatMemberships ChatMember[]   @relation("ChatMemberships")
+  chatMessages    ChatMessage[]  @relation("ChatMessagesAuthored")
+  chatReactions   ChatReaction[] @relation("ChatReactions")
+
   @@index([managerId])
+}
+
+// ----- Messenger: direct chats & groups -----
+//
+// A Chat is either a DIRECT dialog (exactly two members, deduped by directKey)
+// or a GROUP (named, owner + admins manage members). Messages support replies,
+// forwarding (label only), editing, one pinned message per chat, emoji
+// reactions and file attachments (stored via lib/storage like task files).
+// Unread counts derive from ChatMember.lastReadAt.
+
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+enum ChatMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  type      ChatType
+  name      String? // groups only — direct chats show the peer's name
+  color     String   @default("iris") // group avatar tint (see lib/tints)
+  createdAt DateTime @default(now())
+
+  // dedupe key for direct chats: "<minUserId>:<maxUserId>"
+  directKey String? @unique
+
+  // one pinned message per chat (a new pin replaces the previous one)
+  pinnedMessageId String?      @unique
+  pinnedMessage   ChatMessage? @relation("ChatPinnedMessage", fields: [pinnedMessageId], references: [id], onDelete: SetNull)
+
+  members  ChatMember[]
+  messages ChatMessage[]
+}
+
+model ChatMember {
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("ChatMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  role       ChatMemberRole @default(MEMBER)
+  pinned     Boolean        @default(false) // chat pinned at the top of this user's list
+  lastReadAt DateTime       @default(now())
+  joinedAt   DateTime       @default(now())
+
+  @@id([chatId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id     String @id @default(cuid())
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation("ChatMessagesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+
+  body String
+
+  replyToId String?
+  replyTo   ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("MessageReplies")
+
+  forwardedFrom String? // source label, e.g. «Финансы» or the author's name
+
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  pinnedInChat Chat? @relation("ChatPinnedMessage")
+
+  reactions   ChatReaction[]
+  attachments ChatAttachment[]
+
+  @@index([chatId, createdAt])
+}
+
+model ChatReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("ChatReactions", fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+}
+
+model ChatAttachment {
+  id         String      @id @default(cuid())
+  messageId  String
+  message    ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename   String // original file name
+  storedName String // key in storage (see lib/storage)
+  mimeType   String
+  size       Int
+  createdAt  DateTime    @default(now())
+
+  @@index([messageId])
 }
 
 // ----- Org hierarchy: regions + access groups -----

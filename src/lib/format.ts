@@ -65,3 +65,45 @@ export function relativeUpdated(date: Date | null): string {
   if (days < 30) return `Обновлено ${Math.floor(days / 7)} нед. назад`;
   return `Обновлено ${Math.floor(days / 30)} мес. назад`;
 }
+
+// ---- Messenger («Чат») time & size helpers ----
+
+function sameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Bubble timestamp: "14:32". */
+export function chatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Chat-list timestamp: today → "14:32", yesterday → "вчера", else "3 июл". */
+export function chatListTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (sameDay(d, now)) return chatTime(iso);
+  const yesterday = new Date(now.getTime() - 86_400_000);
+  if (sameDay(d, yesterday)) return "вчера";
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+/** Day-separator label inside a dialog: "Сегодня" | "Вчера" | "3 июля". */
+export function chatDayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (sameDay(d, now)) return "Сегодня";
+  const yesterday = new Date(now.getTime() - 86_400_000);
+  if (sameDay(d, yesterday)) return "Вчера";
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+}
+
+/** File size: "240 КБ", "1,2 МБ". */
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} Б`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} КБ`;
+  return `${(n / (1024 * 1024)).toFixed(1).replace(".", ",")} МБ`;
+}

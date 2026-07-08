@@ -56,3 +56,9 @@ next-env.d.ts
 /test-results
 /playwright-report
 /.playwright
+
+# local docker override (machine-specific dev ports etc.)
+/docker-compose.override.yml
+
+# graphify knowledge-graph output (generated)
+/graphify-out

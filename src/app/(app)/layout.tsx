@@ -3,6 +3,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { PushSetup } from "@/components/PushSetup";
 import { Sidebar } from "@/components/Sidebar";
 import { requireUser } from "@/lib/auth";
+import { getUnreadChatCount } from "@/lib/chat-data";
 
 // Authenticated pages are per-user and read the DB at request time — never
 // statically prerender them at build (would try to reach the DB during build).
@@ -21,13 +22,20 @@ export default async function AppLayout({
 
   const isAdmin = user.role === "ADMIN";
   const isRegional = user.role === "MANAGER";
+  const chatUnread = await getUnreadChatCount(user.id);
 
   return (
     <div className="flex min-h-screen">
       <PushSetup />
-      <Sidebar name={user.name} avatarUrl={user.avatarUrl} isAdmin={isAdmin} isRegional={isRegional} />
+      <Sidebar
+        name={user.name}
+        avatarUrl={user.avatarUrl}
+        isAdmin={isAdmin}
+        isRegional={isRegional}
+        chatUnread={chatUnread}
+      />
       <main className="safe-top safe-x min-w-0 flex-1 pb-[72px] md:pb-0">{children}</main>
-      <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} />
+      <MobileTabBar isAdmin={isAdmin} isRegional={isRegional} chatUnread={chatUnread} />
     </div>
   );
 }
