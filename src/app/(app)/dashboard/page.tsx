@@ -4,6 +4,9 @@ import { Avatar } from "@/components/Avatar";
 import { isDirector, isRegional } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { getDashboard } from "@/lib/dashboard-data";
+import { listManageableRegions } from "@/lib/org-data";
+import { getStats } from "@/lib/stats-data";
+import { DashboardTabs } from "./DashboardTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -19,38 +22,28 @@ function Stat({ label, value, tone }: { label: string; value: number | string; t
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const user = await requireUser();
   if (!isDirector(user) && !isRegional(user)) redirect("/boards");
 
-  const d = await getDashboard(user);
+  const { tab: raw } = await searchParams;
+  const tab = raw === "sales" ? "sales" : "tasks";
+
+  const [d, stats, regionOpts] = await Promise.all([
+    getDashboard(user),
+    tab === "sales" ? getStats(user, "month") : Promise.resolve(null),
+    isRegional(user) ? listManageableRegions(user) : Promise.resolve([]),
+  ]);
   const peakDay = Math.max(1, ...d.throughput.map((x) => x.count));
   const peakBoard = Math.max(1, ...d.perBoard.map((b) => b.open));
 
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-[22px] font-bold text-[var(--color-ink)]">Сводка</h1>
-        <div className="flex shrink-0 items-center gap-3.5">
-          {isDirector(user) && (
-            <a href="/api/export/tasks" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
-              Выгрузить CSV
-            </a>
-          )}
-          <Link href="/stats" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
-            Статистика →
-          </Link>
-          <Link href="/templates" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
-            Шаблоны →
-          </Link>
-        </div>
-      </div>
-      <p className="mt-1 text-[13.5px] text-[var(--color-muted)]">
-        {isDirector(user) ? "По всем доскам" : "По вашим регионам"}
-      </p>
-
-      {/* Totals */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+  const tasks = (
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Открытых задач" value={d.totals.open} />
         <Stat label="Просрочено" value={d.totals.overdue} tone="danger" />
         <Stat label="Закрыто за 7 дней" value={d.totals.completed7d} />
@@ -59,7 +52,6 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {/* Throughput */}
         <section className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
           <h2 className="text-[14px] font-semibold text-[var(--color-ink)]">Закрыто за неделю</h2>
           <div className="mt-4 flex h-28 items-end gap-2">
@@ -76,7 +68,6 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {/* Load by board */}
         <section className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
           <h2 className="text-[14px] font-semibold text-[var(--color-ink)]">Нагрузка по доскам</h2>
           {d.perBoard.length === 0 ? (
@@ -107,7 +98,6 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      {/* Load by person */}
       <section className="mt-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
         <h2 className="text-[14px] font-semibold text-[var(--color-ink)]">Нагрузка по людям</h2>
         {d.perPerson.length === 0 ? (
@@ -136,6 +126,34 @@ export default async function DashboardPage() {
           </ul>
         )}
       </section>
+    </>
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-[22px] font-bold text-[var(--color-ink)]">Сводка</h1>
+        <div className="flex shrink-0 items-center gap-3.5">
+          {isDirector(user) && (
+            <a href="/api/export/tasks" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+              Выгрузить CSV
+            </a>
+          )}
+          <Link href="/templates" className="text-[13px] font-medium text-[var(--color-accent)] hover:underline">
+            Шаблоны →
+          </Link>
+        </div>
+      </div>
+      <p className="mt-1 text-[13.5px] text-[var(--color-muted)]">
+        {isDirector(user) ? "По всем доскам и точкам" : "По вашим регионам"}
+      </p>
+      <DashboardTabs
+        initialTab={tab}
+        tasks={tasks}
+        role={isDirector(user) ? "director" : "regional"}
+        regionLabel={regionOpts.map((r) => r.name).join(", ") || undefined}
+        initialStats={stats}
+      />
     </div>
   );
 }

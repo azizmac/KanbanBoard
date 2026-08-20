@@ -39,23 +39,6 @@ function IconChat() {
   );
 }
 
-function IconCalendar() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-    </svg>
-  );
-}
-
-function IconStats() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 3v18h18" />
-      <path d="M7 14l3-3 3 2 4-5" />
-    </svg>
-  );
-}
 function IconTeam() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -97,14 +80,6 @@ function IconDashboard() {
     </svg>
   );
 }
-function IconTemplate() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M3 9h18M9 9v12" />
-    </svg>
-  );
-}
 
 export function Sidebar({
   name,
@@ -112,12 +87,14 @@ export function Sidebar({
   isAdmin,
   isRegional,
   chatUnread = 0,
+  inboxUnread = 0,
 }: {
   name: string;
   avatarUrl?: string | null;
   isAdmin: boolean;
   isRegional: boolean;
   chatUnread?: number;
+  inboxUnread?: number;
 }) {
   const pathname = usePathname();
 
@@ -125,16 +102,11 @@ export function Sidebar({
     { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
     { href: "/chat", label: "Чат", icon: <IconChat />, match: ["/chat"], badge: chatUnread },
-    { href: "/my", label: "Мои", icon: <IconMine />, match: ["/my"] },
-    { href: "/calendar", label: "Календарь", icon: <IconCalendar />, match: ["/calendar"] },
+    { href: "/my", label: "Моё", icon: <IconMine />, match: ["/my", "/calendar"], badge: inboxUnread },
     { href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] },
     { href: "/team", label: "Команда", icon: <IconTeam />, match: ["/team"] },
     ...(isAdmin || isRegional
-      ? [
-          { href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] },
-          { href: "/stats", label: "Статистика", icon: <IconStats />, match: ["/stats"] },
-          { href: "/templates", label: "Шаблоны", icon: <IconTemplate />, match: ["/templates"] },
-        ]
+      ? [{ href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard", "/stats", "/templates"] }]
       : []),
     ...(isAdmin
       ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }]

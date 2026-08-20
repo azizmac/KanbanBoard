@@ -7,7 +7,7 @@ export type DayBucket = { label: string; count: number };
 
 export type DashboardData = {
   totals: { open: number; overdue: number; completed7d: number; boards: number };
-  cycleTimeDays: number | null; // avg days from creation to «Готово» (last 7d), null if none
+  cycleTimeDays: number | null; // avg days from creation to a done column (last 7d), null if none
   perPerson: PersonLoad[];
   perBoard: BoardLoad[];
   throughput: DayBucket[]; // completions per day, last 7 days
@@ -21,9 +21,9 @@ export async function getDashboard(user: Actor): Promise<DashboardData> {
   const now = Date.now();
   const since = new Date(now - 7 * DAY);
 
-  // One pass over all OPEN (not «Готово») tasks in scope; aggregate in JS.
+  // One pass over all OPEN (not done) tasks in scope; aggregate in JS.
   const open = await prisma.task.findMany({
-    where: { archivedAt: null, column: { name: { not: "Готово" }, board: { AND: [scope, { archivedAt: null }] } } },
+    where: { archivedAt: null, column: { done: false, board: { AND: [scope, { archivedAt: null }] } } },
     select: {
       dueDate: true,
       assignee: { select: { id: true, name: true } },
@@ -53,12 +53,11 @@ export async function getDashboard(user: Actor): Promise<DashboardData> {
     boards.set(b.id, bl);
   }
 
-  // Completions = tasks moved INTO a «Готово» column (detail ends with "Готово").
+  // Completions = status changes onto a task that currently sits in a done column.
   const completionWhere = {
     kind: "STATUS_CHANGED" as const,
-    detail: { endsWith: "Готово" },
     createdAt: { gte: since },
-    task: { column: { board: scope } },
+    task: { column: { done: true, board: scope } },
   };
   const [completed7d, completions, boardCount] = await Promise.all([
     prisma.activity.count({ where: completionWhere }),

@@ -6,12 +6,8 @@ import { canManageBoard } from "@/lib/access";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Board columns are customizable, EXCEPT the terminal «Готово» column: stats,
-// search and the bot all key "done" off that name, so it can't be renamed,
-// deleted, or moved off the end. Everything else is editable.
-function isDoneName(name: string) {
-  return name.includes("Готово");
-}
+// Terminal (done) column is flagged in the DB. It can be renamed, but not
+// deleted or moved off the end — stats, search and the bot key off `done`.
 
 const nameSchema = z.string().trim().min(1, "Введите название").max(40);
 
@@ -29,7 +25,7 @@ async function columnsOf(boardId: string) {
   return prisma.column.findMany({
     where: { boardId },
     orderBy: { position: "asc" },
-    select: { id: true, name: true, position: true, _count: { select: { tasks: true } } },
+    select: { id: true, name: true, position: true, done: true, _count: { select: { tasks: true } } },
   });
 }
 
@@ -39,32 +35,29 @@ function ok(boardId: string) {
   return { ok: true as const, boardId };
 }
 
-/** Add a column, inserted just before the terminal «Готово» column. */
+/** Add a column, inserted just before the terminal done column. */
 export async function addColumn(boardId: string, name = "Новая колонка") {
   if (!(await loadManageable(boardId))) return { ok: false as const, error: "Недостаточно прав" };
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
-  if (isDoneName(parsed.data)) return { ok: false as const, error: "«Готово» — зарезервированное имя" };
 
   const cols = await columnsOf(boardId);
-  const doneIdx = cols.findIndex((c) => isDoneName(c.name));
-  const at = doneIdx === -1 ? cols.length : doneIdx; // insert before done, else at end
+  const doneIdx = cols.findIndex((c) => c.done);
+  const at = doneIdx === -1 ? cols.length : doneIdx;
   await prisma.$transaction([
     ...cols.slice(at).map((c) =>
       prisma.column.update({ where: { id: c.id }, data: { position: c.position + 1 } }),
     ),
-    prisma.column.create({ data: { name: parsed.data, boardId, position: at } }),
+    prisma.column.create({ data: { name: parsed.data, boardId, position: at, done: false } }),
   ]);
   return ok(boardId);
 }
 
 export async function renameColumn(columnId: string, name: string) {
-  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true, name: true } });
+  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true, done: true } });
   if (!col || !(await loadManageable(col.boardId))) return { ok: false as const, error: "Недостаточно прав" };
-  if (isDoneName(col.name)) return { ok: false as const, error: "Колонку «Готово» переименовать нельзя" };
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
-  if (isDoneName(parsed.data)) return { ok: false as const, error: "«Готово» — зарезервированное имя" };
   await prisma.column.update({ where: { id: columnId }, data: { name: parsed.data } });
   return ok(col.boardId);
 }
@@ -72,24 +65,24 @@ export async function renameColumn(columnId: string, name: string) {
 export async function deleteColumn(columnId: string) {
   const col = await prisma.column.findUnique({
     where: { id: columnId },
-    select: { boardId: true, name: true, _count: { select: { tasks: true } } },
+    select: { boardId: true, done: true, _count: { select: { tasks: true } } },
   });
   if (!col || !(await loadManageable(col.boardId))) return { ok: false as const, error: "Недостаточно прав" };
-  if (isDoneName(col.name)) return { ok: false as const, error: "Колонку «Готово» удалить нельзя" };
+  if (col.done) return { ok: false as const, error: "Финальную колонку удалить нельзя" };
   if (col._count.tasks > 0) return { ok: false as const, error: "Сначала перенесите задачи из колонки" };
   await prisma.column.delete({ where: { id: columnId } });
   return ok(col.boardId);
 }
 
 export async function moveColumn(columnId: string, dir: "left" | "right") {
-  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true, name: true } });
+  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true, done: true } });
   if (!col || !(await loadManageable(col.boardId))) return { ok: false as const, error: "Недостаточно прав" };
-  if (isDoneName(col.name)) return { ok: false as const, error: "Колонка «Готово» всегда последняя" };
+  if (col.done) return { ok: false as const, error: "Финальная колонка всегда последняя" };
 
   const cols = await columnsOf(col.boardId);
   const i = cols.findIndex((c) => c.id === columnId);
   const j = dir === "left" ? i - 1 : i + 1;
-  if (j < 0 || j >= cols.length || isDoneName(cols[j].name)) {
+  if (j < 0 || j >= cols.length || cols[j].done) {
     return { ok: false as const, error: "Дальше двигать нельзя" };
   }
   await prisma.$transaction([

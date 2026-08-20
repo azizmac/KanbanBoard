@@ -24,6 +24,7 @@ import {
   setGroupMembers,
   setRegionManagers,
 } from "./org-actions";
+import { createInviteLink } from "./actions";
 
 type Role = "ADMIN" | "MANAGER" | "MEMBER";
 type Opt = { id: string; name: string };
@@ -127,6 +128,7 @@ export function OrgPanel({
       .catch(() => {});
   }, [canManageRegions]);
   const [invite, setInvite] = useState<{ groupId: string; url: string } | null>(null);
+  const [staffInvite, setStaffInvite] = useState<string | null>(null);
   const [groupFilter, setGroupFilter] = useState<string>("ALL"); // "ALL" | "NONE" | regionId
 
   const assignablePositionRoles = ALL_ROLES.filter((r) => roleTier(r) < actorTier);
@@ -195,9 +197,8 @@ export function OrgPanel({
         </Link>
       </div>
       <p className="mb-6 text-sm text-[var(--color-muted)]">
-        Директора создают регионы и назначают региональных управляющих. Региональный управляющий
-        ведёт доски своего региона. Доступ линейного персонала к доске — через группы, привязанные
-        к этой доске.
+        Директора создают регионы и назначают региональных. Региональный ведёт доски, группы,
+        должности «Линейный» и приглашения своего региона.
       </p>
 
       {error && (
@@ -205,6 +206,32 @@ export function OrgPanel({
           {error}
         </div>
       )}
+
+      <section className="mb-8 rounded-[13px] border border-[var(--color-border-card)] bg-[var(--color-surface)] p-3.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-[14px] font-semibold">Пригласить линейного</h2>
+          <button
+            onClick={() => {
+              startTransition(async () => {
+                const res = await createInviteLink("MEMBER");
+                if (res.ok) setStaffInvite(res.url);
+                else setError(res.error ?? "Ошибка");
+              });
+            }}
+            className="rounded-[10px] bg-[var(--color-accent)] px-3 py-1.5 text-[12.5px] font-semibold text-white"
+          >
+            Ссылка на 7 дней
+          </button>
+        </div>
+        {staffInvite && (
+          <input
+            readOnly
+            value={staffInvite}
+            onFocus={(e) => e.currentTarget.select()}
+            className="mt-2 w-full rounded-[8px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-2.5 py-1.5 font-mono text-[12px] outline-none"
+          />
+        )}
+      </section>
 
       {/* Regions */}
       <section className="mb-9">
@@ -272,8 +299,8 @@ export function OrgPanel({
         </div>
       </section>
 
-      {/* Boards ↔ regions (directors only) — a board may span several regions */}
-      {canManageRegions && boards.length > 0 && (
+      {/* Boards ↔ regions — director: any region; regional: only theirs (server keeps the rest) */}
+      {boards.length > 0 && (
         <section className="mb-9">
           <h2 className={sectionLabel}>Доски и регионы</h2>
           <p className="mb-3 text-[13px] text-[var(--color-muted)]">
@@ -397,8 +424,8 @@ export function OrgPanel({
         </div>
       </section>
 
-      {/* Positions — constructor: name + access level + colour (directors only) */}
-      {canManageRegions && (
+      {/* Positions — constructor: name + access level + colour */}
+      {assignablePositionRoles.length > 0 && (
       <section className="mt-9">
         <h2 className={sectionLabel}>Конструктор должностей</h2>
         <p className="mb-3 text-[13px] text-[var(--color-muted)]">

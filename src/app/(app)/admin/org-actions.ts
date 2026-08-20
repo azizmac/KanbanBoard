@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Role } from "@/generated/prisma/client";
-import { canAssignRole, canManageGroup, canManageOrg, canManageRegion } from "@/lib/access";
+import {
+  canAssignRole,
+  canManageBoard,
+  canManageGroup,
+  canManageOrg,
+  canManageRegion,
+  canRunRegion,
+  isDirector,
+  manageableRegionIds,
+} from "@/lib/access";
 import { recordAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { listSalesPoints, parseIikoPoint } from "@/lib/iiko/client";
@@ -13,6 +22,11 @@ import { prisma } from "@/lib/prisma";
 async function director() {
   const user = await requireUser();
   return canManageOrg(user) ? user : null;
+}
+
+async function orgEditor() {
+  const user = await requireUser();
+  return canRunRegion(user) ? user : null;
 }
 
 async function groupRegion(groupId: string) {
@@ -27,13 +41,30 @@ function ok() {
   return { ok: true as const };
 }
 
-/** Set the regions a board belongs to (replaces the set; empty = no region).
- *  Director only. A board may span several regions (shared boards). */
+/** Set the regions a board belongs to. Director replaces the full set.
+ *  A regional may only add/remove regions they manage — others stay put. */
 export async function setBoardRegions(boardId: string, regionIds: string[]) {
-  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  const user = await orgEditor();
+  if (!user) return { ok: false as const, error: "Недостаточно прав" };
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { regions: { select: { id: true } }, ownerId: true },
+  });
+  if (!board || !(await canManageBoard(user, board))) {
+    return { ok: false as const, error: "Недостаточно прав" };
+  }
+  const requested = [...new Set(regionIds)];
+  let next = requested;
+  if (!isDirector(user)) {
+    const mine = (await manageableRegionIds(user)) ?? [];
+    const current = board.regions.map((r) => r.id);
+    const kept = current.filter((id) => !mine.includes(id));
+    const added = requested.filter((id) => mine.includes(id));
+    next = [...new Set([...kept, ...added])];
+  }
   await prisma.board.update({
     where: { id: boardId },
-    data: { regions: { set: [...new Set(regionIds)].map((id) => ({ id })) } },
+    data: { regions: { set: next.map((id) => ({ id })) } },
   });
   revalidatePath("/admin/org");
   revalidatePath("/boards");
@@ -43,7 +74,7 @@ export async function setBoardRegions(boardId: string, regionIds: string[]) {
 // ----- Positions (справочник должностей) -----
 
 export async function createPosition(name: string, role: Role = "MEMBER", color = "gray") {
-  const actor = await director();
+  const actor = await orgEditor();
   if (!actor) return { ok: false as const, error: "Недостаточно прав" };
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message };
@@ -61,7 +92,13 @@ export async function createPosition(name: string, role: Role = "MEMBER", color 
 }
 
 export async function deletePosition(id: string) {
-  if (!(await director())) return { ok: false as const, error: "Недостаточно прав" };
+  const actor = await orgEditor();
+  if (!actor) return { ok: false as const, error: "Недостаточно прав" };
+  const pos = await prisma.position.findUnique({ where: { id }, select: { role: true } });
+  if (!pos) return { ok: false as const, error: "Должность не найдена" };
+  if (!canAssignRole(actor, pos.role)) {
+    return { ok: false as const, error: "Нельзя удалить должность своего уровня или выше" };
+  }
   await prisma.position.delete({ where: { id } });
   revalidatePath("/admin/org");
   revalidatePath("/admin");

@@ -137,4 +137,4 @@ export type TeamUser = {
   role: import("@/generated/prisma/client").Role;
 };
 
-export type ColumnOption = { id: string; name: string };
+export type ColumnOption = { id: string; name: string; done: boolean };

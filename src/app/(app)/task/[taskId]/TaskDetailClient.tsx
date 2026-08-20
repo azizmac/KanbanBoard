@@ -118,8 +118,8 @@ export function TaskDetailClient({
   const [error, setError] = useState<string | null>(null);
 
   const columnName = columns.find((c) => c.id === columnId)?.name ?? task.column.name;
-  const doneColumn = columns.find((c) => c.name.includes("Готово"));
-  const isDone = columnName.includes("Готово");
+  const doneColumn = columns.find((c) => c.done);
+  const isDone = columns.find((c) => c.id === columnId)?.done ?? false;
   const dueOverdue = due ? new Date(due).getTime() < now - 86_400_000 : false;
 
   // Merge comments + system notes into one chronological feed (GitLab-style).
@@ -259,7 +259,7 @@ export function TaskDetailClient({
           <button
             onClick={() => saveColumn(doneColumn.id)}
             disabled={pending}
-            title="Переместить в «Готово» и завершить"
+            title="Переместить в финальную колонку и завершить"
             className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[var(--color-success)] px-3 py-1.5 text-[13px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
           >
             ✓ Закрыть задачу

@@ -62,8 +62,8 @@ export async function searchTasks(user: Actor, f: SearchFilters): Promise<Search
     AND: [scope, { archivedAt: null }, ...(f.board ? [{ id: f.board }] : [])],
   };
   const column: Prisma.ColumnWhereInput = { board: boardWhere };
-  if (f.status === "done") column.name = "Готово";
-  else if (f.status !== "all") column.name = { not: "Готово" }; // default: open
+  if (f.status === "done") column.done = true;
+  else if (f.status !== "all") column.done = false; // default: open
 
   const where: Prisma.TaskWhereInput = { column, archivedAt: null };
   if (f.q?.trim()) where.title = { contains: f.q.trim(), mode: "insensitive" };

@@ -28,8 +28,8 @@ export default async function ColleaguePage({ params }: { params: Promise<{ id: 
   if (!u || !u.active) notFound();
 
   const [open, done] = await Promise.all([
-    prisma.task.count({ where: { assigneeId: u.id, archivedAt: null, column: { name: { not: "Готово" } } } }),
-    prisma.task.count({ where: { assigneeId: u.id, archivedAt: null, column: { name: "Готово" } } }),
+    prisma.task.count({ where: { assigneeId: u.id, archivedAt: null, column: { done: false } } }),
+    prisma.task.count({ where: { assigneeId: u.id, archivedAt: null, column: { done: true } } }),
   ]);
 
   const stats = [

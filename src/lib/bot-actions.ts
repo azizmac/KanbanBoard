@@ -49,10 +49,10 @@ export async function completeTask(taskId: string, actor: Actor) {
   const task = await loadTask(taskId);
   if (!task) return { ok: false as const, error: "Задача не найдена" };
   const done = await prisma.column.findFirst({
-    where: { boardId: task.column.boardId, name: { contains: "Готово" } },
+    where: { boardId: task.column.boardId, done: true },
     orderBy: { position: "asc" },
   });
-  if (!done) return { ok: false as const, error: "На доске нет колонки «Готово»" };
+  if (!done) return { ok: false as const, error: "На доске нет финальной колонки" };
   const fresh = await prisma.task.findUnique({ where: { id: taskId }, select: { title: true, columnId: true } });
   if (!fresh) return { ok: false as const, error: "Задача не найдена" };
   if (fresh.columnId === done.id) return { ok: true as const, title: fresh.title, already: true };

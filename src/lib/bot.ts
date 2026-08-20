@@ -23,8 +23,8 @@ function taskLink(id: string, title: string) {
   const safe = escapeHtml(title);
   return base ? `<a href="${base}/task/${id}">${safe}</a>` : safe;
 }
-function isDone(name: string) {
-  return name.includes("Готово");
+function isDone(col: { done?: boolean; name: string }) {
+  return col.done === true;
 }
 function fmtDue(d: Date | null): string {
   if (!d) return "";
@@ -49,7 +49,7 @@ type OpenTask = {
 /** Open (not «Готово») tasks assigned to a user, soonest-due first. */
 function openAssignedTasks(userId: string): Promise<OpenTask[]> {
   return prisma.task.findMany({
-    where: { assigneeId: userId, archivedAt: null, column: { name: { not: "Готово" } } },
+    where: { assigneeId: userId, archivedAt: null, column: { done: false } },
     orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
     select: { id: true, title: true, dueDate: true, column: { select: { name: true, board: { select: { name: true } } } } },
   });
@@ -138,7 +138,7 @@ async function boardTasksMessage(boardId: string): Promise<string> {
 
   const blocks: string[] = [];
   for (const col of board.columns) {
-    if (isDone(col.name) || col.tasks.length === 0) continue;
+    if (isDone(col) || col.tasks.length === 0) continue;
     const lines = col.tasks.map(
       (t) => `• ${taskLink(t.id, t.title)}${t.assignee ? ` — ${escapeHtml(t.assignee.name)}` : ""}${fmtDue(t.dueDate)}`,
     );

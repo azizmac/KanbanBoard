@@ -51,14 +51,6 @@ function IconOrg() {
     </svg>
   );
 }
-function IconSearch() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-    </svg>
-  );
-}
 function IconChat() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -66,12 +58,11 @@ function IconChat() {
     </svg>
   );
 }
-function IconDashboard() {
+function IconMine() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 3v18h18" />
-      <rect x="7" y="11" width="3" height="6" rx="0.5" />
-      <rect x="13" y="7" width="3" height="10" rx="0.5" />
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
   );
 }
@@ -80,10 +71,12 @@ export function MobileTabBar({
   isAdmin,
   isRegional,
   chatUnread = 0,
+  inboxUnread = 0,
 }: {
   isAdmin: boolean;
   isRegional: boolean;
   chatUnread?: number;
+  inboxUnread?: number;
 }) {
   const pathname = usePathname();
 
@@ -94,10 +87,7 @@ export function MobileTabBar({
     { href: "/home", label: "Главная", icon: <IconHome />, match: ["/home"] },
     { href: "/boards", label: "Доски", icon: <IconBoard />, match: ["/boards", "/board"] },
     { href: "/chat", label: "Чат", icon: <IconChat />, match: ["/chat"], badge: chatUnread },
-    // Leadership gets Сводка (search stays on desktop); members keep Поиск + Команда.
-    ...(isAdmin || isRegional
-      ? [{ href: "/dashboard", label: "Сводка", icon: <IconDashboard />, match: ["/dashboard"] }]
-      : [{ href: "/search", label: "Поиск", icon: <IconSearch />, match: ["/search"] }]),
+    { href: "/my", label: "Моё", icon: <IconMine />, match: ["/my", "/calendar"], badge: inboxUnread },
     ...(isAdmin
       ? [{ href: "/admin", label: "Админка", icon: <IconAdmin />, match: ["/admin"] }]
       : isRegional

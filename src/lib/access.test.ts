@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actorTier, canAssignRole, canManageUser, roleTier } from "./access";
+import { actorTier, canAssignRole, canManageUser, canRunRegion, roleTier } from "./access";
 
 const owner = { id: "o", role: "ADMIN" as const, superAdmin: true };
 const director = { id: "d", role: "ADMIN" as const };
@@ -65,5 +65,13 @@ describe("canAssignRole — never promote to your level or above", () => {
   it("a regional may only grant linear", () => {
     expect(canAssignRole(regional, "MANAGER")).toBe(false);
     expect(canAssignRole(regional, "MEMBER")).toBe(true);
+  });
+});
+
+describe("canRunRegion", () => {
+  it("is true for directors and regionals, not linear staff", () => {
+    expect(canRunRegion(director)).toBe(true);
+    expect(canRunRegion(regional)).toBe(true);
+    expect(canRunRegion(member)).toBe(false);
   });
 });

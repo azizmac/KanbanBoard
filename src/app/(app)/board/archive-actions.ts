@@ -39,7 +39,7 @@ export async function archiveTask(taskId: string, archived = true) {
 export async function archiveDoneTasks(boardId: string) {
   if (!(await canManage(boardId))) return { ok: false as const, error: "Недостаточно прав" };
   const res = await prisma.task.updateMany({
-    where: { archivedAt: null, column: { boardId, name: { contains: "Готово" } } },
+    where: { archivedAt: null, column: { boardId, done: true } },
     data: { archivedAt: new Date() },
   });
   revalidatePath("/board/[boardId]", "page");

@@ -3,7 +3,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canAssignRole, canManageUser } from "@/lib/access";
+import { canAssignRole, canManageUser, canRunRegion } from "@/lib/access";
 import { recordAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { roleLabels } from "@/lib/constants";
@@ -36,10 +36,17 @@ async function currentAdmin() {
   return user.role === "ADMIN" ? user : null;
 }
 
+/** Director or regional who may invite below their tier. */
+async function currentInviter() {
+  const user = await requireUser();
+  return canRunRegion(user) ? user : null;
+}
+
 /** Generate a shareable invite link. Opening it lets the next Telegram login
- *  self-provision with the given role (default MEMBER = basic access). */
+ *  self-provision with the given role (default MEMBER = basic access).
+ *  Regionals may only mint «Линейный» links. */
 export async function createInviteLink(role: "MEMBER" | "MANAGER" | "ADMIN" = "MEMBER") {
-  const admin = await currentAdmin();
+  const admin = await currentInviter();
   if (!admin) return { ok: false as const, error: "Недостаточно прав" };
   if (!canAssignRole(admin, role)) {
     return { ok: false as const, error: "Нельзя выдавать роль на своём уровне или выше" };
