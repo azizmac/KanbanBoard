@@ -20,8 +20,8 @@ export default async function ProfilePage() {
   const me = await requireUser();
 
   const [active, completed, boards, commentCount, recentComments, manager] = await Promise.all([
-    prisma.task.count({ where: { assigneeId: me.id, archivedAt: null, column: { name: { not: "Готово" } } } }),
-    prisma.task.count({ where: { assigneeId: me.id, archivedAt: null, column: { name: "Готово" } } }),
+    prisma.task.count({ where: { assigneeId: me.id, archivedAt: null, column: { done: false } } }),
+    prisma.task.count({ where: { assigneeId: me.id, archivedAt: null, column: { done: true } } }),
     prisma.board.count(),
     prisma.comment.count({ where: { authorId: me.id } }),
     prisma.comment.findMany({

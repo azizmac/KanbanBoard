@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { directChatKey } from "@/lib/chat-key";
 import { notifyChatUsers } from "@/lib/realtime";
 import { deleteStoredFile } from "@/lib/storage";
 import type { ChatMemberRole } from "@/generated/prisma/client";
@@ -38,7 +39,7 @@ export async function openDirectChat(otherUserId: string) {
   const other = await prisma.user.findUnique({ where: { id: otherUserId } });
   if (!other || !other.active) return { ok: false as const, error: "Пользователь не найден" };
 
-  const directKey = [user.id, other.id].sort().join(":");
+  const directKey = directChatKey(user.id, other.id);
   const existing = await prisma.chat.findUnique({ where: { directKey } });
   if (existing) return { ok: true as const, id: existing.id };
 

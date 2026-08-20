@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 import type { ColumnOption, MyTaskRow, TagData, TaskDetailData, TeamUser } from "./types";
 
 const myTaskInclude = {
-  column: { select: { name: true, board: { select: { id: true, name: true, color: true } } } },
+  column: { select: { name: true, done: true, board: { select: { id: true, name: true, color: true } } } },
 } as const;
 
 type MyTaskRaw = {
@@ -10,7 +10,7 @@ type MyTaskRaw = {
   title: string;
   priority: MyTaskRow["priority"];
   dueDate: Date | null;
-  column: { name: string; board: { id: string; name: string; color: string } };
+  column: { name: string; done: boolean; board: { id: string; name: string; color: string } };
 };
 
 function toMyTaskRow(t: MyTaskRaw): MyTaskRow {
@@ -24,7 +24,7 @@ function toMyTaskRow(t: MyTaskRaw): MyTaskRow {
     boardName: t.column.board.name,
     boardColor: t.column.board.color,
     columnName: t.column.name,
-    done: t.column.name.includes("Готово"),
+    done: t.column.done,
   };
 }
 
@@ -51,7 +51,7 @@ export async function getMyWork(
       })
     : [];
 
-  // Tasks sitting in a «Готово» column are completed — drop them so "my work"
+  // Tasks sitting in a done column are completed — drop them so "my work"
   // stays focused on what's still open.
   return {
     assigned: assigned.map(toMyTaskRow).filter((t) => !t.done),
@@ -177,7 +177,7 @@ export async function getColumnOptions(boardId?: string): Promise<ColumnOption[]
   const board = await prisma.board.findFirst({
     where: boardId ? { id: boardId } : undefined,
     orderBy: { createdAt: "asc" },
-    include: { columns: { orderBy: { position: "asc" }, select: { id: true, name: true } } },
+    include: { columns: { orderBy: { position: "asc" }, select: { id: true, name: true, done: true } } },
   });
   return board?.columns ?? [];
 }

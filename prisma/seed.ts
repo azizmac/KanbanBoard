@@ -46,13 +46,13 @@ async function main() {
 
   console.log("Creating users…");
   const anna = await prisma.user.create({
-    data: { name: "Анна Ковалёва", username: "anna", role: "ADMIN", position: "CEO / Founder" },
+    data: { name: "Анна Ковалёва", username: "anna", role: "ADMIN", position: "CEO / Founder", onboardedAt: new Date() },
   });
   const dmitry = await prisma.user.create({
-    data: { name: "Дмитрий Соколов", username: "dmitry", role: "MANAGER", position: "Tech Lead", managerId: anna.id },
+    data: { name: "Дмитрий Соколов", username: "dmitry", role: "MANAGER", position: "Tech Lead", managerId: anna.id, onboardedAt: new Date() },
   });
   const elena = await prisma.user.create({
-    data: { name: "Елена Морозова", username: "elena", role: "MANAGER", position: "Product Manager", managerId: anna.id },
+    data: { name: "Елена Морозова", username: "elena", role: "MANAGER", position: "Product Manager", managerId: anna.id, onboardedAt: new Date() },
   });
 
   const memberSpecs: Array<[string, string, string, string]> = [
@@ -68,7 +68,7 @@ async function main() {
   const members = [];
   for (const [name, username, position, managerId] of memberSpecs) {
     members.push(
-      await prisma.user.create({ data: { name, username, position, role: "MEMBER", managerId } }),
+      await prisma.user.create({ data: { name, username, position, role: "MEMBER", managerId, onboardedAt: new Date() } }),
     );
   }
   const [igor, maria, pavel, sergey, alexey, olga, natalia] = members;
@@ -87,7 +87,7 @@ async function main() {
         name,
         color,
         regions: { connect: { id: regionId } },
-        columns: { create: COLUMNS.map((n, position) => ({ name: n, position })) },
+        columns: { create: COLUMNS.map((n, position) => ({ name: n, position, done: n === "Готово" })) },
       },
       include: { columns: { orderBy: { position: "asc" } } },
     });
@@ -119,7 +119,23 @@ async function main() {
       },
     },
   });
-  void payTask;
+
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: sergey.id,
+        type: "ASSIGNED",
+        message: "Дмитрий Соколов назначил(а) вам задачу «Интеграция платёжного шлюза ЮKassa»",
+        taskId: payTask.id,
+      },
+      {
+        userId: dmitry.id,
+        type: "MENTIONED",
+        message: "Вас упомянули в задаче «Интеграция платёжного шлюза ЮKassa»",
+        taskId: payTask.id,
+      },
+    ],
+  });
 
   const devTasks: Array<Parameters<typeof prisma.task.create>[0]["data"]> = [
     {

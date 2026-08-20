@@ -259,10 +259,12 @@ export function StatsClient({
   initial,
   role,
   regionLabel,
+  embedded = false,
 }: {
   initial: StatsData;
   role: "director" | "regional";
   regionLabel?: string;
+  embedded?: boolean;
 }) {
   const [data, setData] = useState(initial);
   const [period, setPeriod] = useState<Period>(initial.period);
@@ -311,7 +313,8 @@ export function StatsClient({
   );
   const agg = useMemo(() => aggregate(points), [points]);
   const laborAvailable = points.some((p) => p.laborPct > 0);
-  const minsAgo = Math.max(0, Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000));
+  const [now] = useState(() => Date.now());
+  const minsAgo = Math.max(0, Math.round((now - new Date(data.generatedAt).getTime()) / 60000));
 
   const ranked = useMemo(() => [...points].sort((a, b) => b.revenue - a.revenue), [points]);
   const maxRev = Math.max(1, ...points.map((p) => p.revenue));
@@ -363,11 +366,11 @@ export function StatsClient({
   return (
     <div className="pb-12">
       {/* sticky header */}
-      <div className="sticky top-safe z-10 border-b border-[var(--color-line)] bg-[var(--color-canvas)] px-5 pt-6 sm:px-9">
+      <div className={`border-b border-[var(--color-line)] bg-[var(--color-canvas)] ${embedded ? "px-0 pt-2" : "sticky top-safe z-10 px-5 pt-6 sm:px-9"}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--color-ink)]">Статистика</h1>
+              {!embedded && <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--color-ink)]">Статистика</h1>}
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${
                   data.iikoOk ? "bg-[var(--color-success-bg)] text-[var(--color-success)]" : "bg-[var(--color-urgent-bg)] text-[var(--color-urgent)]"
@@ -462,7 +465,7 @@ export function StatsClient({
         {role !== "director" && <div className="pb-3" />}
       </div>
 
-      <div className={`mx-auto max-w-[1180px] px-5 py-6 sm:px-9 ${loading ? "opacity-60" : ""}`}>
+      <div className={`${embedded ? "py-4" : "mx-auto max-w-[1180px] px-5 py-6 sm:px-9"} ${loading ? "opacity-60" : ""}`}>
         {points.length === 0 ? (
           <p className="rounded-[14px] border border-dashed border-[var(--color-line)] py-16 text-center text-sm text-[var(--color-muted)]">
             {role === "regional"

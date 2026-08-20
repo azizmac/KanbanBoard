@@ -6,6 +6,7 @@ import { canCreateBoardInRegions, canManageBoard } from "@/lib/access";
 import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { defaultBoardColumnsCreate } from "@/lib/columns";
 import { notifyTaskChange } from "@/lib/realtime";
 
 const createSchema = z.object({
@@ -65,7 +66,6 @@ export async function moveTask(input: {
   return { ok: true as const };
 }
 
-const DEFAULT_COLUMNS = ["Бэклог", "В работе", "На ревью", "Готово"];
 const boardSchema = z.object({
   name: z.string().trim().min(1, "Введите название").max(120),
   color: z.string().trim().max(20).optional(),
@@ -92,7 +92,7 @@ export async function createBoard(input: z.input<typeof boardSchema>) {
       color: parsed.data.color ?? "iris",
       regions: regionIds.length ? { connect: regionIds.map((id) => ({ id })) } : undefined,
       ownerId: user.id, // the creator owns it (esp. personal boards)
-      columns: { create: DEFAULT_COLUMNS.map((name, position) => ({ name, position })) },
+      columns: { create: defaultBoardColumnsCreate() },
     },
   });
 

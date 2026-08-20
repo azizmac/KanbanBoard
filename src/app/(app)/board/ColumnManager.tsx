@@ -41,7 +41,7 @@ export function ColumnManager({
           <button onClick={onClose} className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-warm)]">✕</button>
         </div>
         <p className="mb-4 text-[12.5px] text-[var(--color-muted)]">
-          Название, порядок и лимит задач (WIP). Колонка «Готово» закреплена последней.
+          Название, порядок и лимит задач (WIP). Финальную колонку можно переименовать, но не сдвинуть и не удалить.
         </p>
 
         {error && (
@@ -55,7 +55,7 @@ export function ColumnManager({
             <div key={c.id} className="flex items-center gap-1.5 rounded-[11px] border border-[var(--color-border-card)] bg-[var(--color-surface-warm)] px-2.5 py-2">
               <input
                 defaultValue={c.name}
-                disabled={c.done || pending}
+                disabled={pending}
                 onBlur={(e) => {
                   const v = e.target.value.trim();
                   if (v && v !== c.name) run(renameColumn(c.id, v));

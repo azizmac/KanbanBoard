@@ -6,10 +6,10 @@ import { useState } from "react";
 import type { ColumnData } from "@/lib/types";
 import { TaskCardView } from "./TaskCardView";
 
-function columnDot(name: string) {
-  if (name.includes("Готово")) return "bg-[var(--color-success)]";
-  if (name.includes("работе")) return "bg-[var(--color-accent)]";
-  if (name.includes("проверке")) return "bg-[var(--color-high-dot)]";
+function columnDot(column: { name: string; done: boolean }) {
+  if (column.done) return "bg-[var(--color-success)]";
+  if (column.name.includes("работе")) return "bg-[var(--color-accent)]";
+  if (column.name.includes("проверке") || column.name.includes("ревью")) return "bg-[var(--color-high-dot)]";
   return "bg-[var(--color-faint)]";
 }
 
@@ -43,7 +43,7 @@ export function ColumnView({
   return (
     <div className="flex w-full flex-col">
       <header className="flex items-center gap-2 px-1.5 py-2">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${columnDot(column.name)}`} />
+        <span className={`h-2 w-2 shrink-0 rounded-full ${columnDot(column)}`} />
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">{column.name}</h2>
         <span
           className={`font-mono text-xs ${over ? "font-semibold text-[var(--color-urgent)]" : "text-[var(--color-faint)]"}`}

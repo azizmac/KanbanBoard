@@ -305,6 +305,8 @@ model Column {
   name     String
   position Int // order of the column on the board
   wipLimit Int? // optional work-in-progress cap (null = no limit)
+  // Terminal column: stats, search, bot and "my work" key off this flag, not the name.
+  done     Boolean @default(false)
   boardId  String
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks    Task[]

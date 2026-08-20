@@ -46,6 +46,11 @@ export function canManageOrg(u: Actor) {
   return isDirector(u);
 }
 
+/** Director or regional — invite линейных, mint MEMBER positions, attach boards to own regions. */
+export function canRunRegion(u: Actor) {
+  return isDirector(u) || isRegional(u);
+}
+
 /** Prisma `where` fragment selecting the boards a user may see. */
 export async function visibleBoardWhere(user: Actor): Promise<Prisma.BoardWhereInput> {
   if (isDirector(user)) return {}; // everything

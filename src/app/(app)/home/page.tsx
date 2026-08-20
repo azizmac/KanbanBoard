@@ -95,7 +95,7 @@ export default async function HomePage() {
       </p>
 
       <Link
-        href="/calendar"
+        href="/my?tab=calendar"
         className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-ink)] transition hover:border-[var(--color-accent)] md:hidden"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

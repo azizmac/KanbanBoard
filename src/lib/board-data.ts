@@ -3,8 +3,8 @@ import { relativeUpdated } from "./format";
 import { prisma } from "./prisma";
 import type { BoardData, BoardOption, BoardSummary, TaskCard } from "./types";
 
-function isDone(name: string) {
-  return name.includes("Готово");
+function isDone(col: { done: boolean }) {
+  return col.done;
 }
 function isReview(name: string) {
   return name.includes("ревью") || name.includes("проверке");
@@ -69,7 +69,7 @@ export async function getBoard(user: Actor, boardId?: string): Promise<BoardData
     columns: board.columns.map((c) => ({
       id: c.id,
       name: c.name,
-      done: isDone(c.name),
+      done: c.done,
       wipLimit: c.wipLimit,
       tasks: c.tasks.map(toCard),
     })),
@@ -118,7 +118,7 @@ export async function getBoardSummaries(user: Actor): Promise<BoardSummary[]> {
     for (const col of b.columns) {
       for (const t of col.tasks) {
         total += 1;
-        if (isDone(col.name)) done += 1;
+        if (isDone(col)) done += 1;
         else if (isReview(col.name)) review += 1;
         else if (isProgress(col.name)) progress += 1;
         if (t.assignee) members.add(t.assignee.name);

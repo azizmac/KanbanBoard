@@ -32,7 +32,7 @@ async function sendReminders() {
   let sent = 0;
   for (const u of users) {
     const burning = await prisma.task.count({
-      where: { assigneeId: u.id, column: { name: { not: "Готово" } }, dueDate: { lt: horizon } },
+      where: { assigneeId: u.id, column: { done: false }, dueDate: { lt: horizon } },
     });
     if (burning === 0) continue;
     const view = await buildTaskListView(u.id, true);

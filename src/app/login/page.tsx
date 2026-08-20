@@ -37,7 +37,7 @@ export default async function LoginPage({
 
   const [boardCount, closedCount, teamCount, users] = await Promise.all([
     prisma.board.count({ where: { archivedAt: null } }),
-    prisma.task.count({ where: { archivedAt: null, column: { name: "Готово" } } }),
+    prisma.task.count({ where: { archivedAt: null, column: { done: true } } }),
     prisma.user.count({ where: { active: true } }),
     showDev
       ? prisma.user.findMany({ where: { active: true }, orderBy: [{ role: "asc" }, { name: "asc" }] })
